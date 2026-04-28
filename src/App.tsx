@@ -64,11 +64,11 @@ export default function App() {
   }
 
   if (role === 'teacher') {
-    return <TeacherPortal />;
+    return <TeacherPortal onLogout={handleLogout} />;
   }
 
   if (role === 'parent') {
-    return <ParentPortal />;
+    return <ParentPortal onLogout={handleLogout} />;
   }
 
   return (

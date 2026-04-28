@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, GraduationCap, Users, ArrowRight, School } from 'lucide-react';
 
@@ -7,6 +7,13 @@ interface PortalProps {
 }
 
 export default function Portal({ onSelectRole }: PortalProps) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('school_config');
+    if (saved) setConfig(JSON.parse(saved));
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 bg-left-top bg-no-repeat" style={{ backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 50%)' }}>
       <div className="max-w-5xl w-full">
@@ -14,12 +21,19 @@ export default function Portal({ onSelectRole }: PortalProps) {
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="flex items-center justify-center gap-3 mb-6"
+            className="flex flex-col items-center justify-center gap-4 mb-6"
           >
-            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
-              <School className="w-7 h-7" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                <School className="w-7 h-7" />
+              </div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">EduQuest <span className="text-blue-600">SGE</span></h1>
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">EduQuest <span className="text-blue-600">SGE</span></h1>
+            {config?.schoolName && (
+               <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100">
+                  {config.schoolName}
+               </div>
+            )}
           </motion.div>
           <h2 className="text-4xl font-bold text-slate-800 tracking-tight">Bem-vindo ao Portal Educacional</h2>
           <p className="text-slate-500 mt-4 text-lg">Selecione seu perfil para acessar as funcionalidades específicas</p>
