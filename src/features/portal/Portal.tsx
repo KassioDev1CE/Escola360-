@@ -27,7 +27,7 @@ export default function Portal({ onSelectRole }: PortalProps) {
               <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
                 <School className="w-7 h-7" />
               </div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">EduQuest <span className="text-blue-600">SGE</span></h1>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Escola<span className="text-blue-600">360</span></h1>
             </div>
             {config?.schoolName && (
                <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100">

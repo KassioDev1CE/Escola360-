@@ -17,9 +17,69 @@ import {
 
 interface ParentPortalProps {
   onLogout?: () => void;
+  user?: any;
 }
 
-export default function ParentPortal({ onLogout }: ParentPortalProps) {
+export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [schedules, setSchedules] = useState<any>({});
+  const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [studentRes, scheduleRes] = await Promise.all([
+          fetch('/api/students'),
+          fetch('/api/schedules')
+        ]);
+        
+        if (!studentRes.ok || !scheduleRes.ok) {
+            console.error('Failed to fetch parent data', {
+                students: studentRes.status,
+                schedules: scheduleRes.status
+            });
+            setLoading(false);
+            return;
+        }
+
+        const allStudents = await studentRes.json();
+        const allSchedules = await scheduleRes.json();
+        setSchedules(allSchedules);
+
+        // Filtra apenas os alunos deste responsável
+        const matches = allStudents.filter((s: any) => s.guardianCpf === user?.cpf);
+        setStudents(matches);
+        if (matches.length > 0) {
+          setSelectedStudent(matches[0]);
+          updateTodaySchedule(matches[0].classId, allSchedules);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user?.cpf]);
+
+  const updateTodaySchedule = (classId: string, allSchedules: any) => {
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const today = dayNames[new Date().getDay()];
+    const classSched = allSchedules[classId] || [];
+    const filtered = classSched.filter((s: any) => s.day === today);
+    setTodaySchedule(filtered.sort((a: any, b: any) => a.period - b.period));
+  };
+
+  const handleStudentChange = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    setSelectedStudent(student);
+    updateTodaySchedule(student.classId, schedules);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-400 italic animate-pulse">Autenticando vínculo familiar...</div>;
+
   return (
     <div className="min-h-screen bg-[#FDFDFD]">
       {/* Header Parent - Modern & Clean */}
@@ -28,7 +88,7 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-600/20 font-black text-xl italic">R</div>
               <div>
-                <h1 className="text-base font-black text-slate-900 tracking-tight leading-none mb-1">EduQuest Pais</h1>
+                <h1 className="text-base font-black text-slate-900 tracking-tight leading-none mb-1">Escola<span className="text-blue-600">360</span> Pais</h1>
                 <p className="text-[10px] text-emerald-600 uppercase font-black tracking-[0.2em] opacity-80">Portal da Família</p>
               </div>
             </div>
@@ -40,7 +100,7 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
                <div className="h-8 w-px bg-slate-100"></div>
                <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs font-black text-slate-800">Maria Oliveira</p>
+                    <p className="text-xs font-black text-slate-800">{user?.name || 'Responsável'}</p>
                     <button 
                       onClick={onLogout}
                       className="text-[10px] font-black text-rose-500 hover:text-rose-700 flex items-center gap-1 uppercase tracking-widest ml-auto"
@@ -49,7 +109,7 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
                     </button>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-slate-100 border-2 border-white shadow-inner flex items-center justify-center text-slate-400 font-bold">
-                    MO
+                    {user?.name?.charAt(0) || 'R'}
                   </div>
                </div>
             </div>
@@ -60,13 +120,26 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
         <section className="grid grid-cols-1 lg:grid-cols-4 gap-8">
            {/* Perfil do Aluno / Filho */}
            <div className="lg:col-span-1 space-y-6">
+              {students.length > 1 && (
+                <div className="space-y-2 mb-6">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alternar Aluno</label>
+                  <select 
+                    value={selectedStudent?.id}
+                    onChange={(e) => handleStudentChange(e.target.value)}
+                    className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none ring-2 ring-emerald-500/10 focus:ring-emerald-500 transition-all shadow-sm"
+                  >
+                    {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/30 text-center relative overflow-hidden group">
-                 <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
-                 <div className="w-24 h-24 bg-blue-50 rounded-full mx-auto flex items-center justify-center text-blue-600 text-3xl font-black mb-6 border-8 border-white shadow-2xl transition-transform group-hover:scale-105">
-                   AB
+                 <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+                 <div className="w-24 h-24 bg-emerald-50 rounded-full mx-auto flex items-center justify-center text-emerald-600 text-3xl font-black mb-6 border-8 border-white shadow-2xl transition-transform group-hover:scale-105">
+                   {selectedStudent?.name?.charAt(0) || 'A'}
                  </div>
-                 <h3 className="font-black text-slate-900 text-lg tracking-tight">Ana Beatriz</h3>
-                 <p className="text-[11px] font-bold text-slate-400 mb-8 uppercase tracking-widest">RA: 2024001 • 9º Ano A</p>
+                 <h3 className="font-black text-slate-900 text-lg tracking-tight">{selectedStudent?.name || 'Selecionar Aluno'}</h3>
+                 <p className="text-[11px] font-bold text-slate-400 mb-8 uppercase tracking-widest">RA: {selectedStudent?.ra || 'N/A'}</p>
                  
                  <div className="space-y-3">
                     <div className="flex justify-between items-center bg-slate-50/80 p-4 rounded-3xl border border-slate-50">
@@ -99,13 +172,6 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
                           <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-wider">Sexta • 18:30</p>
                        </div>
                     </div>
-                    <div className="flex gap-4 group cursor-pointer opacity-60">
-                       <div className="w-1 h-12 bg-slate-700 rounded-full"></div>
-                       <div>
-                          <p className="text-xs font-bold leading-tight">Lista de Materiais Complementares</p>
-                          <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-wider">Expandir leitura</p>
-                       </div>
-                    </div>
                  </div>
               </div>
            </div>
@@ -113,36 +179,50 @@ export default function ParentPortal({ onLogout }: ParentPortalProps) {
            {/* Dashboard de Rendimento */}
            <div className="lg:col-span-3 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <DashboardCard 
-                    title="Boletim On-line" 
-                    icon={<BookOpen className="w-6 h-6" />}
-                    color="bg-blue-600 shadow-blue-600/20"
-                    desc="Consulte o desempenho em tempo real por áreas do conhecimento."
-                 />
-                 <DashboardCard 
-                    title="Diário de Faltas" 
-                    icon={<Calendar className="w-6 h-6" />}
-                    color="bg-amber-500 shadow-amber-500/20"
-                    desc="Acompanhe as entradas, saídas e registros de frequência diária."
-                 />
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-lg shadow-slate-200/20">
+                     <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+                           <Clock className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight">Horário do Dia</h4>
+                     </div>
+                     <div className="space-y-3">
+                        {todaySchedule.length > 0 ? todaySchedule.map((s, idx) => (
+                           <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                              <span className="text-[10px] font-black text-slate-400">{s.period}º Período</span>
+                              <span className="text-xs font-black text-slate-800">{s.subject}</span>
+                              <span className="text-[9px] font-bold text-blue-600 uppercase italic opacity-60">{s.teacher}</span>
+                           </div>
+                        )) : (
+                           <p className="text-xs text-slate-400 font-bold italic py-4 text-center">Nenhuma aula para hoje.</p>
+                        )}
+                     </div>
+                  </div>
+                  
+                  <DashboardCard 
+                     title="Diário de Faltas" 
+                     icon={<Calendar className="w-6 h-6" />}
+                     color="bg-amber-500 shadow-amber-500/20"
+                     desc="Acompanhe as entradas, saídas e registros de frequência diária do seu filho."
+                  />
               </div>
 
               <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20">
                  <div className="flex justify-between items-center mb-10">
                     <div>
                       <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
-                         <TrendingUp className="w-6 h-6 text-emerald-500" /> RENDIMENTO POR DISCIPLINA
+                         <BookOpen className="w-6 h-6 text-emerald-500" /> BOLETIM E NOTAS
                       </h3>
-                      <p className="text-xs text-slate-400 font-medium mt-1">Comparativo baseado no último conselho de classe.</p>
+                      <p className="text-xs text-slate-400 font-medium mt-1">Consulte o desempenho em tempo real por áreas do conhecimento.</p>
                     </div>
-                    <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">Ver PDF</button>
+                    <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">Ver Detalhes</button>
                  </div>
                  
                  <div className="space-y-8">
                     <GradeRow Subject="Língua Portuguesa" Grade={8.5} />
-                    <GradeRow Subject="Matemática e Cálculo" Grade={9.2} />
-                    <GradeRow Subject="História Geral" Grade={7.8} />
-                    <GradeRow Subject="Geografia Política" Grade={9.0} />
+                    <GradeRow Subject="Matemática" Grade={9.2} />
+                    <GradeRow Subject="História" Grade={7.8} />
+                    <GradeRow Subject="Geografia" Grade={9.0} />
                  </div>
               </div>
 

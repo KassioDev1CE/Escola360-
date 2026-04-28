@@ -13,7 +13,7 @@ async function startServer() {
   // ---------------------------------------------------------
   // MOCK DATABASE (In-Memory)
   // ---------------------------------------------------------
-  const db: { students: any[], classes: any[], finance: any[] } = {
+  const db: { students: any[], classes: any[], finance: any[], teachers: any[], schedules: Record<string, any[]> } = {
     students: [
       { id: "1", name: "Ana Beatriz", ra: "2024001", birthDate: "2010-05-15", schoolId: "cm_school_123", gender: "F", race: "parda" },
       { id: "2", name: "Carlos Eduardo", ra: "2024002", birthDate: "2011-08-20", schoolId: "cm_school_123", gender: "M", race: "branca" }
@@ -25,7 +25,19 @@ async function startServer() {
     finance: [
       { id: "1", description: "Mensalidade - Outubro", amount: 1200, type: "INCOME", date: new Date().toISOString() },
       { id: "2", description: "Energia Elétrica", amount: -450, type: "EXPENSE", date: new Date().toISOString() }
-    ]
+    ],
+    teachers: [
+      { id: "1", name: "Prof. Marcos Silva", cpf: "123.456.789-00", email: "marcos@escola360.com", nis: "1234567890", graduation: "Matemática", schoolId: "cm_school_123", birthDate: "1985-10-12", gender: "M", maritalStatus: "C", address: "Rua das Flores, 123", motherName: "Maria Silva", nationality: "Brasileira", birthCountry: "Brasil", birthState: "SP", birthCity: "São Paulo", educationLevel: "superior" }
+    ],
+    schedules: {
+      "1": [
+        { day: "Seg", period: 1, subject: "Matemática", teacherId: "1", startTime: "07:30", endTime: "08:20" },
+        { day: "Ter", period: 2, subject: "Matemática Financeira", teacherId: "1", startTime: "08:20", endTime: "09:10" }
+      ],
+      "2": [
+        { day: "Qua", period: 3, subject: "Matemática Aplicada", teacherId: "1", startTime: "09:10", endTime: "10:00" }
+      ]
+    }
   };
 
   // 1. Simulação de Middleware de Auth/Multi-tenancy
@@ -39,7 +51,7 @@ async function startServer() {
   // ---------------------------------------------------------
   
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", system: "EduQuest SGE" });
+    res.json({ status: "ok", system: "Escola360" });
   });
 
   // --- Alunos ---
@@ -161,6 +173,61 @@ async function startServer() {
     res.json(db.finance);
   });
 
+  // --- Professores ---
+  app.get("/api/teachers", authMiddleware, (req, res) => {
+    res.json(db.teachers);
+  });
+
+  app.post("/api/teachers", authMiddleware, (req: any, res) => {
+    const newTeacher = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...req.body,
+      schoolId: req.schoolId
+    };
+    db.teachers.push(newTeacher);
+    res.json({ success: true, data: newTeacher });
+  });
+
+  app.put("/api/teachers/:id", authMiddleware, (req: any, res) => {
+    const { id } = req.params;
+    const index = db.teachers.findIndex(t => t.id === id);
+    if (index !== -1) {
+      db.teachers[index] = { ...db.teachers[index], ...req.body };
+      res.json({ success: true, data: db.teachers[index] });
+    } else {
+      res.status(404).json({ error: "Teacher not found" });
+    }
+  });
+
+  app.delete("/api/teachers/:id", authMiddleware, (req: any, res) => {
+    const { id } = req.params;
+    db.teachers = db.teachers.filter(t => t.id !== id);
+    res.json({ success: true });
+  });
+
+  // Schedules API
+  app.get("/api/schedules", (req, res) => {
+    const schedules = db.schedules || {};
+    const classId = req.query.classId as string;
+    if (classId) {
+      return res.json(schedules[classId] || []);
+    }
+    res.json(schedules);
+  });
+
+  app.post("/api/schedules/:classId", (req, res) => {
+    try {
+      const { classId } = req.params;
+      const schedule = req.body; // Expects Array of { day, period, subjectId, teacherId, startTime, endTime }
+      
+      db.schedules[classId] = schedule;
+      
+      res.json({ success: true, schedule });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save schedule" });
+    }
+  });
+
   // ---------------------------------------------------------
   // VITE MIDDLEWARE (Development)
   // ---------------------------------------------------------
@@ -180,7 +247,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 EduQuest SGE rodando em http://localhost:${PORT}`);
+    console.log(`🚀 Escola360 rodando em http://localhost:${PORT}`);
   });
 }
 

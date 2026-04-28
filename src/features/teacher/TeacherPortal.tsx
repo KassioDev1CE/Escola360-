@@ -27,11 +27,65 @@ interface TeacherPortalProps {
 export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
   const [activeTab, setActiveTab] = useState<'attendance' | 'grades' | 'content' | 'dashboard'>('dashboard');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [allSchedules, setAllSchedules] = useState<any>({});
+  const [nextClass, setNextClass] = useState<any>(null);
+  const [classes, setClasses] = useState<any[]>([]);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentDate(new Date()), 60000);
+    const fetchData = async () => {
+      try {
+        const [schedRes, classRes] = await Promise.all([
+          fetch('/api/schedules'),
+          fetch('/api/classes')
+        ]);
+        
+        if (!schedRes.ok || !classRes.ok) {
+            console.error('Failed to fetch teacher data', {
+                schedules: schedRes.status,
+                classes: classRes.status
+            });
+            return;
+        }
+
+        const schedules = await schedRes.json();
+        const classesData = await classRes.json();
+        
+        setAllSchedules(schedules);
+        setClasses(classesData);
+        findNextClass(schedules, classesData);
+      } catch (error) {
+        console.error('Error fetching teacher data:', error);
+      }
+    };
+
+    fetchData();
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const findNextClass = (schedules: any, classesData: any[]) => {
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const today = dayNames[new Date().getDay()];
+    // For demo, we are "Roberto Silva"
+    const myName = "Roberto Silva";
+    
+    let upcoming: any = null;
+    
+    Object.keys(schedules).forEach(classId => {
+      const classSched = schedules[classId];
+      const classInfo = classesData.find(c => c.id === classId);
+      
+      classSched.forEach((slot: any) => {
+        if (slot.day === today && slot.teacher === myName) {
+           upcoming = { ...slot, className: classInfo?.name };
+        }
+      });
+    });
+
+    setNextClass(upcoming);
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex overflow-hidden">
@@ -42,7 +96,7 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
             P
           </div>
           <div>
-            <span className="block font-black text-lg tracking-tighter leading-tight italic">EDUQUEST</span>
+            <span className="block font-black text-lg tracking-tighter leading-tight italic uppercase">ESCOLA<span className="text-blue-600">360</span></span>
             <span className="block text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Docente Pro</span>
           </div>
         </div>
@@ -68,7 +122,7 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
             </div>
             <button 
               onClick={onLogout}
-              className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+              className="w-full key-logout py-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
             >
               <LogOut className="w-3.5 h-3.5" /> Sair do Portal
             </button>
@@ -78,7 +132,7 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
 
       {/* Main Teacher Content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 px-8 py-6 border-b border-slate-200/60 flex justify-between items-center">
+        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 px-8 py-6 border-b border-slate-200/60 flex justify-between items-center text-nowrap">
            <div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">
                 {activeTab === 'dashboard' ? 'Visão Geral' : 
@@ -100,7 +154,7 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
               <div className="h-10 w-px bg-slate-200"></div>
               <div className="flex items-center gap-3 bg-slate-900 px-5 py-3 rounded-2xl shadow-xl shadow-slate-900/10 transition-transform hover:scale-105 cursor-pointer">
                 <Clock className="w-4 h-4 text-blue-400" />
-                <span className="text-white text-xs font-black">PRÓX. AULA: 14:30</span>
+                <span className="text-white text-xs font-black uppercase">PRÓX. AULA: {nextClass ? `${nextClass.className} (${nextClass.subject})` : 'Sem aulas'}</span>
               </div>
            </div>
         </header>
@@ -114,9 +168,9 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <TeacherDashboard />}
-              {activeTab === 'attendance' && <AttendanceView />}
-              {activeTab === 'content' && <LessonPlanView />}
+              {activeTab === 'dashboard' && <TeacherDashboard schedules={allSchedules} classes={classes} />}
+              {activeTab === 'attendance' && <AttendanceView classes={classes} />}
+              {activeTab === 'content' && <LessonPlanView classes={classes} />}
               {activeTab === 'grades' && (
                 <div className="bg-white p-20 rounded-3xl border border-slate-200 text-center shadow-sm">
                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -158,30 +212,58 @@ function TeacherNavItem({ active, icon, label, onClick }: any) {
   );
 }
 
-function TeacherDashboard() {
+function TeacherDashboard({ schedules, classes }: any) {
+  const [mySchedule, setMySchedule] = useState<any[]>([]);
+
+  useEffect(() => {
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const today = dayNames[new Date().getDay()];
+    const myName = "Roberto Silva";
+    const todaySched: any[] = [];
+
+    Object.keys(schedules).forEach(classId => {
+      const classInfo = classes.find((c: any) => c.id === classId);
+      schedules[classId].forEach((slot: any) => {
+        if (slot.day === today && slot.teacher === myName) {
+          todaySched.push({ ...slot, className: classInfo?.name });
+        }
+      });
+    });
+
+    setMySchedule(todaySched.sort((a, b) => a.period - b.period));
+  }, [schedules, classes]);
+
   return (
     <div className="space-y-8">
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <TeacherStatCard label="Aulas Hoje" value="06" sub="04 Realizadas" color="bg-blue-600" />
+        <TeacherStatCard label="Aulas Hoje" value={String(mySchedule.length).padStart(2, '0')} sub={`${mySchedule.length} Agendadas`} color="bg-blue-600" />
         <TeacherStatCard label="Faltas Registradas" value="12" sub="Abaixo da média" color="bg-rose-500" />
-        <TeacherStatCard label="Turmas Ativas" value="04" sub="9º A, 9º B, 1º EM, 2º EM" color="bg-indigo-600" />
+        <TeacherStatCard label="Turmas Ativas" value={String([...new Set(mySchedule.map(s => s.className))].length).padStart(2, '0')} sub="Geografia / Hist." color="bg-indigo-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <h3 className="font-black text-slate-800 tracking-tight flex items-center gap-2 uppercase text-sm">
                   <Calendar className="w-5 h-5 text-blue-500" /> CRONOGRAMA DE HOJE
                 </h3>
              </div>
              <div className="space-y-4">
-                <ScheduleItem time="07:30 - 08:20" title="Geografia Física" classId="9º Ano A" status="done" />
-                <ScheduleItem time="08:20 - 09:10" title="Geografia Física" classId="9º Ano A" status="done" />
-                <ScheduleItem time="09:10 - 10:00" title="Geopolítica" classId="1º Ano EM" status="done" />
-                <ScheduleItem time="10:20 - 11:10" title="Geopolítica" classId="1º Ano EM" status="done" />
-                <ScheduleItem time="14:30 - 15:20" title="Plantão de Dúvidas" classId="Livre" status="pending" />
+                {mySchedule.length > 0 ? mySchedule.map((item, idx) => (
+                  <ScheduleItem 
+                    key={idx} 
+                    time={`${item.period}º Período`} 
+                    title={item.subject} 
+                    classId={item.className} 
+                    status="pending" 
+                  />
+                )) : (
+                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                    <p className="text-slate-400 font-bold text-sm">Nenhuma aula agendada para hoje.</p>
+                  </div>
+                )}
              </div>
            </div>
         </div>
@@ -226,11 +308,11 @@ function ScheduleItem({ time, title, classId, status }: any) {
     }`}>
       <div className="flex items-center gap-6">
         <div className="w-24">
-          <p className="text-[10px] font-black text-slate-400">{time}</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase">{time}</p>
         </div>
         <div>
           <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{title}</p>
-          <p className="text-[10px] font-medium text-slate-500">{classId}</p>
+          <p className="text-[10px] font-black text-blue-600 uppercase italic">{classId}</p>
         </div>
       </div>
       {status === 'done' ? (
@@ -246,13 +328,21 @@ function ScheduleItem({ time, title, classId, status }: any) {
   );
 }
 
-function AttendanceView() {
+function AttendanceView({ classes }: any) {
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
 
   useEffect(() => {
-    fetch('/api/students').then(res => res.json()).then(data => setStudents(data.slice(0, 8)));
-  }, []);
+    if (selectedClass) {
+        fetch('/api/students').then(res => res.json()).then(data => {
+            const filtered = data.filter((s: any) => s.classId === selectedClass);
+            setStudents(filtered);
+        });
+    } else {
+        setStudents([]);
+    }
+  }, [selectedClass]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -263,9 +353,15 @@ function AttendanceView() {
             <div className="flex flex-wrap gap-3">
                 <div className="min-w-[140px]">
                   <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Turma</label>
-                  <select className="w-full bg-slate-100 border-none rounded-xl text-xs font-bold p-3 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
-                    <option>9º Ano A</option>
-                    <option>1º Ano EM</option>
+                  <select 
+                    value={selectedClass}
+                    onChange={e => setSelectedClass(e.target.value)}
+                    className="w-full bg-slate-100 border-none rounded-xl text-xs font-bold p-3 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  >
+                    <option value="">Selecione...</option>
+                    {classes.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="min-w-[200px]">
@@ -273,6 +369,7 @@ function AttendanceView() {
                   <select className="w-full bg-slate-100 border-none rounded-xl text-xs font-bold p-3 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
                     <option>1º Tempo (07:30 - 08:20)</option>
                     <option>2º Tempo (08:20 - 09:10)</option>
+                    <option>3º Tempo (09:10 - 10:00)</option>
                   </select>
                 </div>
                 <div className="flex-1 min-w-[200px]">
@@ -295,9 +392,19 @@ function AttendanceView() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {students.map(s => (
+          {students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
             <StudentAttendanceCard key={s.id} student={s} />
           ))}
+          {selectedClass && students.length === 0 && (
+              <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase text-xs tracking-widest border-2 border-dashed border-slate-100 rounded-3xl">
+                  Nenhum aluno matriculado nesta turma.
+              </div>
+          )}
+          {!selectedClass && (
+              <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase text-xs tracking-widest border-2 border-dashed border-slate-100 rounded-3xl">
+                  Selecione uma turma para carregar a lista de alunos.
+              </div>
+          )}
         </div>
       </div>
     </div>
@@ -351,7 +458,7 @@ function AttendanceBtn({ active, label, color, onClick }: any) {
   );
 }
 
-function LessonPlanView() {
+function LessonPlanView({ classes }: any) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
       <div className="lg:col-span-2 space-y-6">
@@ -362,14 +469,16 @@ function LessonPlanView() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Data</label>
-              <input type="date" className="w-full p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-blue-500/20" />
+              <input type="date" value={new Date().toISOString().split('T')[0]} className="w-full p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-blue-500/20" />
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Turma / Carga Horária</label>
               <div className="flex gap-2">
                  <select className="flex-1 p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100">
-                    <option>9º Ano A</option>
-                    <option>1º Ano EM</option>
+                    <option value="">Selecione...</option>
+                    {classes.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                  </select>
                  <select className="w-20 p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100 text-center">
                     <option>1h</option>

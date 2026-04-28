@@ -15,10 +15,20 @@ export default function Finance() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/finance')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+            throw new Error(`Failed to fetch finance data: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(json => {
         setData(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
         setLoading(false);
       });
   }, []);

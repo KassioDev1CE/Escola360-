@@ -120,7 +120,7 @@ export default function Settings() {
                 required
                 value={config.name}
                 onChange={e => setConfig({...config, name: e.target.value})}
-                placeholder="Ex: Escola EduQuest"
+                placeholder="Ex: Unidade Escola360"
               />
             </SettingsField>
             <SettingsField label="CNPJ Oficial" icon={<FileCheck />}>

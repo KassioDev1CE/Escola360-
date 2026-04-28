@@ -42,6 +42,9 @@ export default function Students() {
     birthCity: '',
     motherName: '',
     fatherName: '',
+    guardianName: '',
+    guardianCpf: '',
+    guardianBirthDate: '',
     guardianPhone: '',
     guardianEmail: '',
     specialNeeds: false,
@@ -59,6 +62,10 @@ export default function Students() {
   const fetchStudents = async () => {
     try {
       const response = await fetch('/api/students');
+      if (!response.ok) {
+        console.error('Failed to fetch students', response.status);
+        return;
+      }
       const data = await response.json();
       setStudents(data);
     } catch (error) {
@@ -71,6 +78,10 @@ export default function Students() {
   const fetchClasses = async () => {
     try {
       const response = await fetch('/api/classes');
+      if (!response.ok) {
+        console.error('Failed to fetch classes', response.status);
+        return;
+      }
       const data = await response.json();
       setClasses(data);
     } catch (error) {
@@ -96,6 +107,9 @@ export default function Students() {
       birthCity: (student as any).birthCity || '',
       motherName: (student as any).motherName || '',
       fatherName: (student as any).fatherName || '',
+      guardianName: (student as any).guardianName || '',
+      guardianCpf: (student as any).guardianCpf || '',
+      guardianBirthDate: (student as any).guardianBirthDate || '',
       guardianPhone: (student as any).guardianPhone || '',
       guardianEmail: (student as any).guardianEmail || '',
       specialNeeds: !!(student as any).specialNeeds,
@@ -142,7 +156,8 @@ export default function Students() {
       name: '', socialName: '', birthDate: '', cpf: '', rg: '', address: '',
       gender: '', race: '', traditionalCommunity: 'none', socialProgram: '',
       nationality: '', birthCountry: '', birthCity: '', motherName: '',
-      fatherName: '', guardianPhone: '', guardianEmail: '', specialNeeds: false,
+      fatherName: '', guardianName: '', guardianCpf: '', guardianBirthDate: '',
+      guardianPhone: '', guardianEmail: '', specialNeeds: false,
       publicTransport: false, disabilities: [], birthCertificate: '', classId: ''
     });
   };
@@ -391,13 +406,22 @@ export default function Students() {
                 <section className="space-y-6">
                   <SectionTitle title="4. Família e Responsável" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField label="Nome da Mãe *">
+                    <FormField label="Nome da Mãe *" icon={<User />}>
                        <input required value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
                     </FormField>
-                    <FormField label="Nome do Pai *">
+                    <FormField label="Nome do Pai *" icon={<User />}>
                        <input required value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
                     </FormField>
-                    <FormField label="Telefone do Responsável *">
+                    <FormField label="Nome do Responsável *" icon={<User />}>
+                       <input required value={formData.guardianName} onChange={e => setFormData({...formData, guardianName: e.target.value})} placeholder="Nome completo do responsável legal" />
+                    </FormField>
+                    <FormField label="CPF do Responsável *" icon={<Hash />}>
+                       <input required value={formData.guardianCpf} onChange={e => setFormData({...formData, guardianCpf: e.target.value})} placeholder="000.000.000-00 (Apenas números)" />
+                    </FormField>
+                    <FormField label="Nascimento do Responsável *" icon={<Calendar />}>
+                       <input type="date" required value={formData.guardianBirthDate} onChange={e => setFormData({...formData, guardianBirthDate: e.target.value})} />
+                    </FormField>
+                    <FormField label="Telefone do Responsável *" icon={<User />}>
                        <input required value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} placeholder="(00) 00000-0000" />
                     </FormField>
                     <FormField label="Email do Responsável">

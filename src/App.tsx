@@ -9,7 +9,8 @@ import {
   LogOut,
   Search,
   FileText,
-  Home
+  Home,
+  Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, type ReactNode, useEffect } from 'react';
@@ -18,39 +19,65 @@ import { useState, type ReactNode, useEffect } from 'react';
 import Dashboard from './features/dashboard/Dashboard';
 import Students from './features/academic/Students';
 import Classes from './features/academic/Classes';
+import Teachers from './features/academic/Teachers';
 import Finance from './features/finance/Finance';
 import Documents from './features/documents/Documents';
 import SettingsView from './features/settings/Settings';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
+import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'classes' | 'finance' | 'documents' | 'settings';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings';
 
 export default function App() {
   const [role, setRole] = useState<UserRole>('portal');
+  const [authStep, setAuthStep] = useState<'portal' | 'login' | 'authenticated'>('portal');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
 
   useEffect(() => {
     const savedRole = sessionStorage.getItem('user_role');
+    const savedStep = sessionStorage.getItem('auth_step');
+    const savedUser = sessionStorage.getItem('current_user');
+
     if (savedRole) setRole(savedRole as UserRole);
+    if (savedStep) setAuthStep(savedStep as any);
+    if (savedUser) setCurrentUser(JSON.parse(savedUser));
   }, []);
 
   const handleSelectRole = (newRole: UserRole) => {
     setRole(newRole);
+    if (newRole === 'portal') {
+      setAuthStep('portal');
+    } else {
+      setAuthStep('login');
+    }
     sessionStorage.setItem('user_role', newRole);
+  };
+
+  const handleLoginSuccess = (user: any) => {
+    setCurrentUser(user);
+    setAuthStep('authenticated');
+    sessionStorage.setItem('current_user', JSON.stringify(user));
+    sessionStorage.setItem('auth_step', 'authenticated');
   };
 
   const handleLogout = () => {
     setRole('portal');
+    setAuthStep('portal');
+    setCurrentUser(null);
     sessionStorage.removeItem('user_role');
+    sessionStorage.removeItem('auth_step');
+    sessionStorage.removeItem('current_user');
   };
 
   const renderContent = () => {
     switch (activeModule) {
       case 'dashboard': return <Dashboard />;
       case 'students': return <Students />;
+      case 'teachers': return <Teachers />;
       case 'classes': return <Classes />;
       case 'finance': return <Finance />;
       case 'documents': return <Documents />;
@@ -59,8 +86,12 @@ export default function App() {
     }
   };
 
-  if (role === 'portal') {
+  if (authStep === 'portal') {
     return <Portal onSelectRole={handleSelectRole} />;
+  }
+
+  if (authStep === 'login') {
+    return <Login role={role as any} onBack={() => setAuthStep('portal')} onLoginSuccess={handleLoginSuccess} />;
   }
 
   if (role === 'teacher') {
@@ -68,7 +99,7 @@ export default function App() {
   }
 
   if (role === 'parent') {
-    return <ParentPortal onLogout={handleLogout} />;
+    return <ParentPortal onLogout={handleLogout} user={currentUser} />;
   }
 
   return (
@@ -78,8 +109,8 @@ export default function App() {
         <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">E</div>
-              <h1 className="font-bold tracking-tight text-lg hidden md:block">EduQuest SGE</h1>
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">360</div>
+              <h1 className="font-bold tracking-tight text-lg hidden md:block">Escola<span className="text-blue-600">360</span></h1>
             </div>
 
             <nav className="hidden lg:flex items-center gap-1">
@@ -94,6 +125,12 @@ export default function App() {
                 onClick={() => setActiveModule('students')}
                 icon={<Users className="w-4 h-4" />}
                 label="Alunos"
+              />
+              <NavButton 
+                active={activeModule === 'teachers'} 
+                onClick={() => setActiveModule('teachers')}
+                icon={<Briefcase className="w-4 h-4" />}
+                label="Professores"
               />
               <NavButton 
                 active={activeModule === 'classes'} 
@@ -153,7 +190,7 @@ export default function App() {
       <div className="bg-white border-b border-slate-200 shrink-0">
         <div className="max-w-[1600px] mx-auto px-8 h-12 flex items-center justify-between">
            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider">
-              <span className="text-slate-400">EduQuest</span>
+              <span className="text-slate-400">Escola<span className="text-blue-600">360</span></span>
               <ChevronRight className="w-3 h-3 text-slate-300" />
               <span className="text-slate-900">{activeModule}</span>
            </div>
@@ -198,7 +235,7 @@ export default function App() {
             <StatusIndicator dotColor="bg-emerald-500" label="Servidor: Online" />
             <StatusIndicator dotColor="bg-blue-400" label="Sincronização: Tempo Real" />
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">EduQuest SGE v2.8.0 • 2024 Built with Tech Solutions</p>
+          <p className="text-[10px] text-slate-400 font-medium">Escola<span className="text-blue-600">360</span> v2.8.0 • 2024 Built with Tech Solutions</p>
         </div>
       </footer>
     </div>

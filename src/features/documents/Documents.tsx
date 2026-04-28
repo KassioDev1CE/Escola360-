@@ -263,7 +263,7 @@ export default function Documents() {
                       
                       <div className="flex justify-between items-end mt-20 text-[8px] font-mono text-slate-400">
                         <span>Hash Autenticação: {Math.random().toString(36).substring(7).toUpperCase()}</span>
-                        <span>Emitido via EduQuest SGE em {new Date().toLocaleString('pt-BR')}</span>
+                        <span>Emitido via Escola360 em {new Date().toLocaleString('pt-BR')}</span>
                       </div>
                    </div>
                 </div>

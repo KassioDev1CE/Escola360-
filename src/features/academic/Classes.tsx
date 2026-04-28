@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type FormEvent } from 'react';
-import { motion } from 'motion/react';
-import { Plus, School, Users, MapPin, Hash, Edit } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, School, Users, MapPin, Hash, Edit, CalendarDays, Clock, Save, Trash2, X } from 'lucide-react';
 
 interface ClassData {
   id: string;
@@ -13,10 +13,23 @@ interface ClassData {
   days: string[];
 }
 
+interface ScheduleSlot {
+  day: string;
+  period: number;
+  subject: string;
+  teacher: string;
+  startTime: string;
+  endTime: string;
+}
+
 export default function Classes() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassData | null>(null);
+  const [selectedClassForSchedule, setSelectedClassForSchedule] = useState<ClassData | null>(null);
+  const [scheduleData, setScheduleData] = useState<ScheduleSlot[]>([]);
+  
   const [formData, setFormData] = useState({ 
     name: '', 
     year: 2024, 
@@ -32,9 +45,61 @@ export default function Classes() {
   }, []);
 
   const fetchClasses = async () => {
-    const res = await fetch('/api/classes');
-    const data = await res.json();
-    setClasses(data);
+    try {
+      const res = await fetch('/api/classes');
+      if (!res.ok) {
+        console.error('Failed to fetch classes', res.status);
+        return;
+      }
+      const data = await res.json();
+      setClasses(data);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  const openScheduleManager = async (c: ClassData) => {
+    try {
+      setSelectedClassForSchedule(c);
+      const res = await fetch(`/api/schedules?classId=${c.id}`);
+      if (!res.ok) {
+        console.error('Failed to fetch schedules', res.status);
+        return;
+      }
+      const data = await res.json();
+      setScheduleData(data || []);
+      setIsScheduleModalOpen(true);
+    } catch (error) {
+      console.error('Error opening schedule manager:', error);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!selectedClassForSchedule) return;
+    const res = await fetch(`/api/schedules/${selectedClassForSchedule.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(scheduleData),
+    });
+    if (res.ok) {
+      setIsScheduleModalOpen(false);
+    }
+  };
+
+  const updateSlot = (day: string, period: number, field: keyof ScheduleSlot, value: any) => {
+    setScheduleData(prev => {
+      const existingIdx = prev.findIndex(s => s.day === day && s.period === period);
+      if (existingIdx >= 0) {
+        const newData = [...prev];
+        newData[existingIdx] = { ...newData[existingIdx], [field]: value };
+        return newData;
+      }
+      return [...prev, { day, period, subject: '', teacher: '', startTime: '', endTime: '', [field]: value }];
+    });
+  };
+
+  const getSlot = (day: string, period: number) => {
+    return scheduleData.find(s => s.day === day && s.period === period) || { subject: '', teacher: '' };
   };
 
   const handleEdit = (c: ClassData) => {
@@ -155,12 +220,121 @@ export default function Classes() {
                  >
                    <Edit className="w-4 h-4" />
                  </button>
+                 <button 
+                  onClick={() => openScheduleManager(c)}
+                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                  title="Gerenciar Horários"
+                 >
+                   <CalendarDays className="w-4 h-4" />
+                 </button>
                  <button className="text-indigo-600 text-xs font-bold hover:underline">Ver Diário</button>
                </div>
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* Schedule Manager Modal */}
+      <AnimatePresence>
+        {isScheduleModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsScheduleModalOpen(false)} />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl p-10 max-h-[92vh] overflow-hidden flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-8 shrink-0">
+                <div className="flex items-center gap-4">
+                   <div className="w-14 h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-500/20">
+                     <CalendarDays className="w-8 h-8" />
+                   </div>
+                   <div>
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">Grade Horária: {selectedClassForSchedule?.name}</h3>
+                      <p className="text-slate-500 font-medium text-sm">Defina até 10 períodos diários para esta turma</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-3">
+                   <button 
+                    onClick={handleSaveSchedule}
+                    className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:bg-black transition-all flex items-center gap-2 shadow-xl shadow-slate-900/10 uppercase tracking-widest"
+                   >
+                     <Save className="w-4 h-4" /> Salvar Grade
+                   </button>
+                   <button 
+                    onClick={() => setIsScheduleModalOpen(false)}
+                    className="p-3 bg-slate-100 text-slate-400 hover:text-slate-900 rounded-2xl transition-colors"
+                   >
+                     <X className="w-6 h-6" />
+                   </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-x-auto custom-scrollbar overflow-y-auto pb-6">
+                <table className="w-full border-collapse min-w-[1000px]">
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 z-10 bg-white p-4 border-b border-slate-100 text-left w-20"></th>
+                      {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'].map(day => (
+                        <th key={day} className="sticky top-0 z-10 bg-white p-4 border-b border-slate-100 text-center font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
+                          {day}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 10 }).map((_, periodIdx) => (
+                      <tr key={periodIdx} className="group transition-colors hover:bg-slate-50/50">
+                        <td className="p-4 border-b border-slate-50 text-center font-black text-slate-300 text-xs italic">
+                          {periodIdx + 1}º
+                        </td>
+                        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'].map(dayShort => {
+                          const slot = getSlot(dayShort, periodIdx + 1);
+                          return (
+                            <td key={dayShort} className="p-2 border-b border-slate-50 min-w-[180px]">
+                              <div className="space-y-2">
+                                <select 
+                                  value={slot.subject}
+                                  onChange={e => updateSlot(dayShort, periodIdx + 1, 'subject', e.target.value)}
+                                  className="w-full bg-slate-50 border-none rounded-xl text-[11px] font-black p-2 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                >
+                                  <option value="">Disciplina...</option>
+                                  <option value="Português">Português</option>
+                                  <option value="Matemática">Matemática</option>
+                                  <option value="História">História</option>
+                                  <option value="Geografia">Geografia</option>
+                                  <option value="Biologia">Biologia</option>
+                                  <option value="Física">Física</option>
+                                  <option value="Química">Química</option>
+                                  <option value="Inglês">Inglês</option>
+                                  <option value="Artes">Artes</option>
+                                  <option value="Ed. Física">Ed. Física</option>
+                                </select>
+                                <select 
+                                  value={slot.teacher}
+                                  onChange={e => updateSlot(dayShort, periodIdx + 1, 'teacher', e.target.value)}
+                                  className="w-full bg-slate-50 border-none rounded-xl text-[10px] font-bold p-2 outline-none italic text-slate-500"
+                                >
+                                  <option value="">Professor...</option>
+                                  <option value="Roberto Silva">Prof. Roberto Silva</option>
+                                  <option value="Maria Oliveira">Profª Maria Oliveira</option>
+                                  <option value="João Santos">Prof. João Santos</option>
+                                  <option value="Fernanda Lima">Profª Fernanda Lima</option>
+                                </select>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
