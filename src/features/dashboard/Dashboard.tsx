@@ -1,10 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, School } from 'lucide-react';
 
 export default function Dashboard() {
+  const [schoolName, setSchoolName] = useState("Colégio Santa Maria");
+
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('school_config');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      if (config.name) setSchoolName(config.name);
+    }
+  }, []);
+
   return (
     <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-2xl shadow-blue-900/20">
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/20 rounded-lg backdrop-blur-sm">
+              <School className="w-5 h-5 text-blue-400" />
+            </div>
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Painel Administrativo</span>
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight mb-2">Bem-vindo, Gestor</h2>
+          <p className="text-slate-400 text-sm max-w-lg">Você está gerenciando o <strong>{schoolName}</strong>. Confira os indicadores chave de hoje e as pendências da secretaria.</p>
+        </div>
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-blue-600/10 to-transparent"></div>
+        <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard 

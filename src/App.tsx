@@ -19,6 +19,7 @@ import Students from './features/academic/Students';
 import Classes from './features/academic/Classes';
 import Finance from './features/finance/Finance';
 import Documents from './features/documents/Documents';
+import SettingsView from './features/settings/Settings';
 
 type ActiveModule = 'dashboard' | 'students' | 'classes' | 'finance' | 'documents' | 'settings';
 
@@ -32,7 +33,7 @@ export default function App() {
       case 'classes': return <Classes />;
       case 'finance': return <Finance />;
       case 'documents': return <Documents />;
-      case 'settings': return <div className="p-8 text-slate-400">Configurações em desenvolvimento...</div>;
+      case 'settings': return <SettingsView />;
       default: return <Dashboard />;
     }
   };

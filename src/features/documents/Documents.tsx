@@ -31,16 +31,22 @@ export default function Documents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
 
-  const school: SchoolInfo = {
+  const [school, setSchool] = useState<SchoolInfo>({
     name: "Colégio Santa Maria - Unidade Central",
     cnpj: "12.345.678/0001-90",
     address: "Rua das Flores, 123 - Jardim América, São Paulo - SP",
     email: "secretaria@santamaria.edu.br",
     phone: "(11) 4002-8922",
     logoLetter: "S"
-  };
+  });
 
   useEffect(() => {
+    // Check for custom config in localStorage
+    const savedConfig = localStorage.getItem('school_config');
+    if (savedConfig) {
+      setSchool(JSON.parse(savedConfig));
+    }
+
     Promise.all([
       fetch('/api/students').then(res => res.json()),
       fetch('/api/classes').then(res => res.json())
