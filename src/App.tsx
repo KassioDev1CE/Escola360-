@@ -8,10 +8,11 @@ import {
   Settings,
   LogOut,
   Search,
-  FileText
+  FileText,
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 
 // Feature Components
 import Dashboard from './features/dashboard/Dashboard';
@@ -20,11 +21,31 @@ import Classes from './features/academic/Classes';
 import Finance from './features/finance/Finance';
 import Documents from './features/documents/Documents';
 import SettingsView from './features/settings/Settings';
+import Portal from './features/portal/Portal';
+import TeacherPortal from './features/teacher/TeacherPortal';
+import ParentPortal from './features/parent/ParentPortal';
 
+type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
 type ActiveModule = 'dashboard' | 'students' | 'classes' | 'finance' | 'documents' | 'settings';
 
 export default function App() {
+  const [role, setRole] = useState<UserRole>('portal');
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
+
+  useEffect(() => {
+    const savedRole = sessionStorage.getItem('user_role');
+    if (savedRole) setRole(savedRole as UserRole);
+  }, []);
+
+  const handleSelectRole = (newRole: UserRole) => {
+    setRole(newRole);
+    sessionStorage.setItem('user_role', newRole);
+  };
+
+  const handleLogout = () => {
+    setRole('portal');
+    sessionStorage.removeItem('user_role');
+  };
 
   const renderContent = () => {
     switch (activeModule) {
@@ -37,6 +58,18 @@ export default function App() {
       default: return <Dashboard />;
     }
   };
+
+  if (role === 'portal') {
+    return <Portal onSelectRole={handleSelectRole} />;
+  }
+
+  if (role === 'teacher') {
+    return <TeacherPortal />;
+  }
+
+  if (role === 'parent') {
+    return <ParentPortal />;
+  }
 
   return (
     <div id="eduquest-app" className="flex flex-col h-screen w-full bg-slate-50 font-sans overflow-hidden">
@@ -84,6 +117,12 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => handleSelectRole('portal')}
+              className="px-4 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-white hover:text-slate-900 transition-all border border-slate-700"
+            >
+              <Home className="w-3 h-3" /> Portais
+            </button>
             <div className="relative hidden sm:block">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input 
@@ -99,11 +138,11 @@ export default function App() {
             <div className="h-8 w-px bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-white">Colégio Santa Maria</p>
-                <p className="text-[10px] text-slate-500">Tenant Ativo</p>
+                <p className="text-xs font-bold text-white">Gestor Escola</p>
+                <p className="text-[10px] text-slate-500">Administrativo</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 cursor-pointer hover:bg-slate-600 transition-colors">
-                JS
+                AD
               </div>
             </div>
           </div>
@@ -125,7 +164,10 @@ export default function App() {
               >
                 <Settings className="w-3.5 h-3.5" /> Configurações
               </button>
-              <button className="flex items-center gap-2 text-xs font-bold text-rose-500 hover:text-rose-700 transition-colors">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-xs font-bold text-rose-500 hover:text-rose-700 transition-colors"
+              >
                 <LogOut className="w-3.5 h-3.5" /> Sair
               </button>
            </div>
