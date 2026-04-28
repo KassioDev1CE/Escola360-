@@ -27,7 +27,7 @@ async function startServer() {
       { id: "2", description: "Energia Elétrica", amount: -450, type: "EXPENSE", date: new Date().toISOString() }
     ],
     teachers: [
-      { id: "1", name: "Prof. Marcos Silva", cpf: "123.456.789-00", email: "marcos@escola360.com", nis: "1234567890", graduation: "Matemática", schoolId: "cm_school_123", birthDate: "1985-10-12", gender: "M", maritalStatus: "C", address: "Rua das Flores, 123", motherName: "Maria Silva", nationality: "Brasileira", birthCountry: "Brasil", birthState: "SP", birthCity: "São Paulo", educationLevel: "superior" }
+      { id: "1", name: "Prof. Marcos Silva", cpf: "123.456.789-00", email: "marcos@escola360.com", nis: "1234567890", graduation: "Matemática", schoolId: "cm_school_123", birthDate: "1985-10-12", gender: "M", maritalStatus: "C", address: "Rua das Flores, 123", motherName: "Maria Silva", nationality: "Brasileira", birthCountry: "Brasil", birthState: "SP", birthCity: "São Paulo", educationLevel: "superior", password: "123" }
     ],
     schedules: {
       "1": [

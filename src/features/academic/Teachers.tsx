@@ -20,7 +20,9 @@ import {
   Edit3,
   FileText,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  Key
 } from 'lucide-react';
 
 interface Teacher {
@@ -52,7 +54,9 @@ export default function Teachers() {
   const [allSchedules, setAllSchedules] = useState<any>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -123,6 +127,30 @@ export default function Teachers() {
   const handleOpenReport = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setIsReportOpen(true);
+  };
+
+  const handleOpenPasswordModal = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setNewPassword('');
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!selectedTeacher || !newPassword) return;
+    try {
+      const res = await fetch(`/api/teachers/${selectedTeacher.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (res.ok) {
+        setIsPasswordModalOpen(false);
+        setNewPassword('');
+        alert('Senha atualizada com sucesso!');
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleNewTeacher = () => {
@@ -228,6 +256,13 @@ export default function Teachers() {
                         title="Editar Cadastro"
                        >
                          <Edit3 className="w-4 h-4" />
+                       </button>
+                       <button 
+                        onClick={() => handleOpenPasswordModal(teacher)}
+                        className="p-3 bg-slate-50 hover:bg-amber-500 group/btn rounded-xl text-slate-400 hover:text-white transition-all shadow-sm border border-slate-100"
+                        title="Redefinir Senha"
+                       >
+                         <Lock className="w-4 h-4" />
                        </button>
                        <button 
                         className="p-3 bg-slate-50 hover:bg-rose-600 group/btn rounded-xl text-slate-400 hover:text-white transition-all shadow-sm border border-slate-100"
@@ -478,6 +513,59 @@ export default function Teachers() {
                   </div>
               </motion.div>
            </div>
+        )}
+      </AnimatePresence>
+
+      {/* Password Reset Modal */}
+      <AnimatePresence>
+        {isPasswordModalOpen && selectedTeacher && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsPasswordModalOpen(false)} />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 border border-slate-200"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner">
+                  <Key className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 tracking-tight">Nova Senha</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedTeacher.name}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
+                  <input 
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Digite a nova senha..."
+                    className="w-full px-4 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-amber-500/20 transition-all outline-none"
+                  />
+                </div>
+                
+                <div className="pt-2 flex gap-3">
+                  <button 
+                    onClick={handleUpdatePassword}
+                    className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
+                  >
+                    Confirmar Nova Senha
+                  </button>
+                  <button 
+                    onClick={() => setIsPasswordModalOpen(false)}
+                    className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    Voltar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
