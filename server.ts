@@ -13,31 +13,28 @@ async function startServer() {
   // ---------------------------------------------------------
   // MOCK DATABASE (In-Memory)
   // ---------------------------------------------------------
-  const db: { students: any[], classes: any[], finance: any[], teachers: any[], schedules: Record<string, any[]> } = {
-    students: [
-      { id: "1", name: "Ana Beatriz", ra: "2024001", birthDate: "2010-05-15", schoolId: "cm_school_123", gender: "F", race: "parda" },
-      { id: "2", name: "Carlos Eduardo", ra: "2024002", birthDate: "2011-08-20", schoolId: "cm_school_123", gender: "M", race: "branca" }
-    ],
-    classes: [
-      { id: "1", name: "9º Ano A", year: 2024, room: "Sala 102", shift: "Manhã", startTime: "07:30", endTime: "12:30", days: ["Seg", "Ter", "Qua", "Qui", "Sex"], schoolId: "cm_school_123" },
-      { id: "2", name: "1º Ano Médio", year: 2024, room: "Auditório", shift: "Tarde", startTime: "13:30", endTime: "18:30", days: ["Seg", "Ter", "Qua", "Qui", "Sex"], schoolId: "cm_school_123" }
-    ],
-    finance: [
-      { id: "1", description: "Mensalidade - Outubro", amount: 1200, type: "INCOME", date: new Date().toISOString() },
-      { id: "2", description: "Energia Elétrica", amount: -450, type: "EXPENSE", date: new Date().toISOString() }
-    ],
-    teachers: [
-      { id: "1", name: "Prof. Marcos Silva", cpf: "123.456.789-00", email: "marcos@escola360.com", nis: "1234567890", graduation: "Matemática", schoolId: "cm_school_123", birthDate: "1985-10-12", gender: "M", maritalStatus: "C", address: "Rua das Flores, 123", motherName: "Maria Silva", nationality: "Brasileira", birthCountry: "Brasil", birthState: "SP", birthCity: "São Paulo", educationLevel: "superior", password: "123" }
-    ],
-    schedules: {
-      "1": [
-        { day: "Seg", period: 1, subject: "Matemática", teacherId: "1", startTime: "07:30", endTime: "08:20" },
-        { day: "Ter", period: 2, subject: "Matemática Financeira", teacherId: "1", startTime: "08:20", endTime: "09:10" }
-      ],
-      "2": [
-        { day: "Qua", period: 3, subject: "Matemática Aplicada", teacherId: "1", startTime: "09:10", endTime: "10:00" }
-      ]
-    }
+  const db: { 
+    students: any[], 
+    classes: any[], 
+    finance: any[], 
+    teachers: any[], 
+    schedules: Record<string, any[]>,
+    users: any[]
+  } = {
+    students: [],
+    classes: [],
+    finance: [],
+    teachers: [],
+    schedules: {},
+    users: [
+      {
+        id: "admin-1",
+        name: "Administrador",
+        email: "kmurilo2012@gmail.com",
+        password: "Novasenha2024@",
+        role: "admin"
+      }
+    ]
   };
 
   // 1. Simulação de Middleware de Auth/Multi-tenancy
@@ -52,6 +49,64 @@ async function startServer() {
   
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", system: "Escola360" });
+  });
+
+  // --- Auth ---
+  app.post("/api/auth/login", (req, res) => {
+    const { identifier, password, role } = req.body;
+
+    if (role === 'admin') {
+      const admin = db.users.find(u => u.email === identifier && u.password === password && u.role === 'admin');
+      if (admin) {
+        return res.json({ name: admin.name, role: 'admin', email: admin.email });
+      }
+    } else if (role === 'teacher') {
+      const teacher = db.teachers.find(t => t.email === identifier && t.password === password);
+      if (teacher) {
+        return res.json({ name: teacher.name, role: 'teacher', email: teacher.email, id: teacher.id });
+      }
+    } else if (role === 'parent') {
+      const cleanedCpf = identifier.replace(/\D/g, '');
+      const student = db.students.find(s => s.guardianCpf === cleanedCpf && s.guardianBirthDate === password);
+      if (student) {
+        // Encontra todos os alunos do mesmo responsável
+        const students = db.students.filter(s => s.guardianCpf === cleanedCpf);
+        return res.json({
+          name: student.guardianName,
+          role: 'parent',
+          cpf: student.guardianCpf,
+          students
+        });
+      }
+    }
+
+    res.status(401).json({ error: "Credenciais inválidas." });
+  });
+
+  app.get("/api/dashboard/stats", authMiddleware, (req, res) => {
+    const activeStudents = db.students.length;
+    const teachersCount = db.teachers.length;
+    const classesCount = db.classes.length;
+    
+    const income = db.finance
+      .filter(f => f.type === 'INCOME')
+      .reduce((acc, curr) => acc + curr.amount, 0);
+    
+    const expenses = db.finance
+      .filter(f => f.type === 'EXPENSE')
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+    const balance = income + expenses;
+
+    res.json({
+      activeStudents,
+      teachersCount,
+      classesCount,
+      income,
+      expenses,
+      balance,
+      alerts: []
+    });
   });
 
   // --- Alunos ---

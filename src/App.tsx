@@ -95,7 +95,7 @@ export default function App() {
   }
 
   if (role === 'teacher') {
-    return <TeacherPortal onLogout={handleLogout} />;
+    return <TeacherPortal onLogout={handleLogout} user={currentUser} />;
   }
 
   if (role === 'parent') {
@@ -175,8 +175,8 @@ export default function App() {
             <div className="h-8 w-px bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-white">Gestor Escola</p>
-                <p className="text-[10px] text-slate-500">Administrativo</p>
+                <p className="text-xs font-bold text-white">{currentUser?.name || 'Gestor Escola'}</p>
+                <p className="text-[10px] text-slate-500">{currentUser?.role === 'admin' ? 'Administrativo' : currentUser?.role || 'Usuário'}</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 cursor-pointer hover:bg-slate-600 transition-colors">
                 AD

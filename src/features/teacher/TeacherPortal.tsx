@@ -22,9 +22,10 @@ import {
 
 interface TeacherPortalProps {
   onLogout?: () => void;
+  user?: any;
 }
 
-export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
+export default function TeacherPortal({ onLogout, user }: TeacherPortalProps) {
   const [activeTab, setActiveTab] = useState<'attendance' | 'grades' | 'content' | 'dashboard'>('dashboard');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [allSchedules, setAllSchedules] = useState<any>({});
@@ -116,7 +117,7 @@ export default function TeacherPortal({ onLogout }: TeacherPortalProps) {
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-full bg-slate-700"></div>
               <div>
-                <p className="text-xs font-bold text-white">Prof. Roberto Silva</p>
+                <p className="text-xs font-bold text-white">{user?.name || 'Docente'}</p>
                 <p className="text-[10px] text-slate-500 italic">Geografia / História</p>
               </div>
             </div>
@@ -238,7 +239,7 @@ function TeacherDashboard({ schedules, classes }: any) {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TeacherStatCard label="Aulas Hoje" value={String(mySchedule.length).padStart(2, '0')} sub={`${mySchedule.length} Agendadas`} color="bg-blue-600" />
-        <TeacherStatCard label="Faltas Registradas" value="12" sub="Abaixo da média" color="bg-rose-500" />
+        <TeacherStatCard label="Faltas Registradas" value="00" sub="Nenhum registro" color="bg-rose-500" />
         <TeacherStatCard label="Turmas Ativas" value={String([...new Set(mySchedule.map(s => s.className))].length).padStart(2, '0')} sub="Geografia / Hist." color="bg-indigo-600" />
       </div>
 
@@ -509,22 +510,10 @@ function LessonPlanView({ classes }: any) {
              <button className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400"><Filter className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-        {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4 group cursor-pointer hover:border-blue-400 transition-all hover:shadow-xl hover:shadow-blue-500/5">
-            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex flex-col items-center justify-center text-slate-400 border border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
-               <span className="text-[10px] font-black">2{i}</span>
-               <span className="text-[8px] font-black uppercase">ABR</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-black text-slate-800 line-clamp-1">Dinâmica das Placas Tectônicas</p>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">9º Ano A • Geografia</p>
-              <div className="mt-3 flex items-center gap-2">
-                 <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded-full border border-emerald-100">VALIDADO</span>
-                 <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-black rounded-full border border-blue-100 italic">2 HORAS-AULA</span>
-              </div>
-            </div>
-          </div>
-        ))}
+        <div className="flex flex-col items-center justify-center py-10 opacity-30">
+          <BookOpen className="w-12 h-12 mb-4" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-center">Nenhum registro de aula encontrado</p>
+        </div>
         <button className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors">
           Ver Todo o Histórico
         </button>

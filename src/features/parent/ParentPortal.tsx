@@ -219,10 +219,12 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
                  </div>
                  
                  <div className="space-y-8">
-                    <GradeRow Subject="Língua Portuguesa" Grade={8.5} />
-                    <GradeRow Subject="Matemática" Grade={9.2} />
-                    <GradeRow Subject="História" Grade={7.8} />
-                    <GradeRow Subject="Geografia" Grade={9.0} />
+                    <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                        <BookOpen className="w-6 h-6 text-slate-300" />
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nenhum dado de rendimento disponível</p>
+                    </div>
                  </div>
               </div>
 

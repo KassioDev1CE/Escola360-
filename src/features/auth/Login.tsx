@@ -70,32 +70,25 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
     setError(null);
 
     try {
-      // Simulate API verification
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          identifier: form.identifier,
+          password: form.password,
+          role
+        })
+      });
 
-      if (role === 'parent') {
-        const res = await fetch('/api/students');
-        const students = await res.json();
-        
-        // Em um sistema real, a verificação seria no backend
-        const matches = students.filter((s: any) => 
-          s.guardianCpf === form.identifier.replace(/\D/g, '') && 
-          s.guardianBirthDate === form.password
-        );
+      const data = await res.json();
 
-        if (matches.length > 0) {
-          onLoginSuccess({
-            name: matches[0].guardianName,
-            cpf: matches[0].guardianCpf,
-            students: matches
-          });
-        } else {
-          throw new Error('Responsável não encontrado ou dados incorretos.');
-        }
-      } else {
-        // Mock success for admin/teacher for demo
-        onLoginSuccess({ name: role === 'admin' ? 'Gestor Master' : 'Prof. Roberto', role });
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha na autenticação.');
       }
+
+      onLoginSuccess(data);
     } catch (err: any) {
       setError(err.message || 'Falha na autenticação. Verifique seus dados.');
     } finally {

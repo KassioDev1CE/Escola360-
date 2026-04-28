@@ -3,14 +3,36 @@ import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, School } from 'lucide-react';
 
 export default function Dashboard() {
-  const [schoolName, setSchoolName] = useState("Colégio Santa Maria");
+  const [schoolName, setSchoolName] = useState("Escola360");
+  const [stats, setStats] = useState<any>({
+    activeStudents: 0,
+    teachersCount: 0,
+    classesCount: 0,
+    income: 0,
+    balance: 0,
+    alerts: []
+  });
 
   useEffect(() => {
     const savedConfig = localStorage.getItem('school_config');
     if (savedConfig) {
       const config = JSON.parse(savedConfig);
-      if (config.name) setSchoolName(config.name);
+      if (config.schoolName) setSchoolName(config.schoolName);
     }
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar estatísticas:", err);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   return (
@@ -35,54 +57,52 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard 
           label="Matrículas Ativas" 
-          value="1.240" 
-          change="+4.2% em relação ao ano ant." 
-          trend="up" 
+          value={stats.activeStudents.toString()} 
+          change="Total de alunos no sistema" 
         />
         <MetricCard 
-          label="Inadimplência" 
-          value="5.8%" 
-          change="-1.2% meta do trimestre" 
-          trend="down" 
+          label="Turmas Ativas" 
+          value={stats.classesCount.toString()} 
+          change="Turmas cadastradas" 
         />
         <MetricCard 
-          label="Receita Mensal (Out)" 
-          value="R$ 452k" 
-          change="+12% vs. mês anterior" 
-          trend="up" 
+          label="Docentes" 
+          value={stats.teachersCount.toString()} 
+          change="Corpo docente ativo" 
         />
         <MetricCard 
-          label="Aulas Realizadas" 
-          value="98%" 
-          change="Meta: 100% frequência docente" 
+          label="Saldo em Caixa" 
+          value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.balance)} 
+          change="Saldo financeiro atual" 
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
-          <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-sm font-bold text-slate-800">Desempenho Financeiro por Curso</h3>
-          </div>
-          <div className="flex-1 p-8 flex items-end gap-6 justify-between h-[300px]">
-            <Bar height="32" label="JAN" />
-            <Bar height="48" label="FEV" />
-            <Bar height="56" label="MAR" />
-            <Bar height="44" label="ABR" />
-            <Bar height="64" label="MAI" active />
-          </div>
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col p-8 items-center justify-center min-h-[300px]">
+           <div className="text-center">
+              <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                <School className="w-8 h-8" />
+              </div>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Gráficos de Desempenho</p>
+              <p className="text-slate-500 text-sm mt-1">Dados insuficientes para gerar visualizações.</p>
+           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4">
           <h3 className="text-sm font-bold text-slate-800 mb-2">Alertas Rápidos</h3>
           <div className="space-y-3">
-             <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs">
-                <p className="font-bold text-amber-800">Inadimplência</p>
-                <p className="text-amber-700">8 alunos com mensalidade atrasada.</p>
-             </div>
-             <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs">
-                <p className="font-bold text-blue-800">Notas</p>
-                <p className="text-blue-700">6 turmas sem fechamento de notas.</p>
-             </div>
+             {stats.alerts.length === 0 ? (
+                <div className="p-10 text-center">
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Nenhum alerta</p>
+                </div>
+             ) : (
+               stats.alerts.map((alert: any, idx: number) => (
+                 <div key={idx} className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs">
+                    <p className="font-bold text-blue-800">{alert.title}</p>
+                    <p className="text-blue-700">{alert.desc}</p>
+                 </div>
+               ))
+             )}
           </div>
         </div>
       </div>
