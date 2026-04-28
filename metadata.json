@@ -1,0 +1,6 @@
+{
+  "name": "EduQuest SGE",
+  "description": "Sistema de Gestão Escolar (SGE) Multi-tenant para escolas particulares, com módulos acadêmico e financeiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
