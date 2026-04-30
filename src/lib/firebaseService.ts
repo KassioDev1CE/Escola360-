@@ -9,7 +9,8 @@ import {
   deleteDoc,
   serverTimestamp,
   getDocs,
-  getDoc
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -76,6 +77,15 @@ export const firebaseService = {
     }
   },
 
+  deleteStudent: async (schoolId: string, studentId: string) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/students`, studentId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/students/${studentId}`);
+    }
+  },
+
   // Classes
   subscribeToClasses: (schoolId: string, callback: (classes: any[]) => void) => {
     const q = query(collection(db, `schools/${schoolId}/classes`));
@@ -95,6 +105,117 @@ export const firebaseService = {
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/classes`);
+    }
+  },
+
+  updateClass: async (schoolId: string, classId: string, classData: any) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/classes`, classId);
+      await updateDoc(docRef, {
+        ...classData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}/classes/${classId}`);
+    }
+  },
+
+  deleteClass: async (schoolId: string, classId: string) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/classes`, classId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/classes/${classId}`);
+    }
+  },
+
+  // Teachers
+  subscribeToTeachers: (schoolId: string, callback: (teachers: any[]) => void) => {
+    const q = query(collection(db, `schools/${schoolId}/teachers`));
+    return onSnapshot(q, (snapshot) => {
+      const teachers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(teachers);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `schools/${schoolId}/teachers`));
+  },
+
+  addTeacher: async (schoolId: string, teacherData: any) => {
+    try {
+      await addDoc(collection(db, `schools/${schoolId}/teachers`), {
+        ...teacherData,
+        schoolId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/teachers`);
+    }
+  },
+
+  updateTeacher: async (schoolId: string, teacherId: string, teacherData: any) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/teachers`, teacherId);
+      await updateDoc(docRef, {
+        ...teacherData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}/teachers/${teacherId}`);
+    }
+  },
+
+  deleteTeacher: async (schoolId: string, teacherId: string) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/teachers`, teacherId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/teachers/${teacherId}`);
+    }
+  },
+
+  // Finance
+  subscribeToFinance: (schoolId: string, callback: (transactions: any[]) => void) => {
+    const q = query(collection(db, `schools/${schoolId}/finance`));
+    return onSnapshot(q, (snapshot) => {
+      const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(transactions);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `schools/${schoolId}/finance`));
+  },
+
+  addTransaction: async (schoolId: string, transactionData: any) => {
+    try {
+      await addDoc(collection(db, `schools/${schoolId}/finance`), {
+        ...transactionData,
+        schoolId,
+        date: transactionData.date || new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/finance`);
+    }
+  },
+
+  // Schedules
+  subscribeToSchedules: (schoolId: string, callback: (schedules: any) => void) => {
+    const q = collection(db, `schools/${schoolId}/schedules`);
+    return onSnapshot(q, (snapshot) => {
+      const schedules: any = {};
+      snapshot.docs.forEach(doc => {
+        schedules[doc.id] = doc.data().slots;
+      });
+      callback(schedules);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `schools/${schoolId}/schedules`));
+  },
+
+  saveSchedule: async (schoolId: string, classId: string, slots: any[]) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/schedules`, classId);
+      await setDoc(docRef, {
+        slots,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/schedules/${classId}`);
     }
   },
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Wallet, ArrowUpCircle, ArrowDownCircle, Search, Filter } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Transaction {
   id: string;
@@ -11,29 +13,22 @@ interface Transaction {
 }
 
 export default function Finance() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    fetch('/api/finance')
-      .then(res => {
-        if (!res.ok) {
-            throw new Error(`Failed to fetch finance data: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(json => {
-        setData(json);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+    const unsub = firebaseService.subscribeToFinance(schoolId, (transactions) => {
+      setData(transactions);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [schoolId]);
 
-  const totalBalance = data.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalBalance = data.reduce((acc, curr) => acc + (curr.type === 'INCOME' ? curr.amount : -curr.amount), 0);
+  const monthIncome = data.filter(d => d.type === 'INCOME').reduce((acc, curr) => acc + curr.amount, 0);
+  const monthExpense = data.filter(d => d.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -60,11 +55,11 @@ export default function Finance() {
          </div>
          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Receitas (Mês)</p>
-            <p className="text-2xl font-bold text-emerald-600">R$ 15.420,00</p>
+            <p className="text-2xl font-bold text-emerald-600">R$ {monthIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
          </div>
          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Despesas (Mês)</p>
-            <p className="text-2xl font-bold text-rose-500">R$ 4.280,00</p>
+            <p className="text-2xl font-bold text-rose-500">R$ {monthExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
          </div>
       </div>
 

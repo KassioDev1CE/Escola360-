@@ -118,6 +118,17 @@ export default function Students() {
     }
   };
 
+  const handleDelete = async (studentId: string) => {
+    if (confirm("Tem certeza que deseja excluir este aluno? Todos os registros vinculados podem ser afetados.")) {
+      try {
+        await firebaseService.deleteStudent(schoolId, studentId);
+      } catch (err) {
+        console.error("Error deleting student", err);
+        alert("Erro ao excluir aluno.");
+      }
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '', socialName: '', birthDate: '', cpf: '', rg: '', address: '',
@@ -246,7 +257,11 @@ export default function Students() {
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button className="text-slate-400 hover:text-rose-500 transition-colors p-1">
+                              <button 
+                                onClick={() => handleDelete(student.id)}
+                                className="text-slate-400 hover:text-rose-500 transition-colors p-1"
+                                title="Excluir Aluno"
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>

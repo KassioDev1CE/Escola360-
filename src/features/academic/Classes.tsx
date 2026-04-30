@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, School, Users, MapPin, Hash, Edit, CalendarDays, Clock, Save, Trash2, X } from 'lucide-react';
 import { firebaseService } from '../../lib/firebaseService';
 import { useAuth } from '../../lib/AuthContext';
+import { db } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface ClassData {
   id: string;
@@ -45,21 +47,27 @@ export default function Classes() {
   });
 
   useEffect(() => {
-    const unsub = firebaseService.subscribeToClasses(schoolId, setClasses);
-    return () => unsub();
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
+    const unsubSchedules = firebaseService.subscribeToSchedules(schoolId, (schedules) => {
+      // Logic for all schedules if needed, but for now we fetch when opening
+    });
+    return () => {
+      unsubClasses();
+      unsubSchedules();
+    };
   }, [schoolId]);
 
   const openScheduleManager = async (c: ClassData) => {
     try {
       setSelectedClassForSchedule(c);
-      // Fetched via service if possible, or direct for now
-      const res = await fetch(`/api/schedules?classId=${c.id}`);
-      if (!res.ok) {
-        console.error('Failed to fetch schedules', res.status);
-        return;
+      // Directly check if we have it or fetch
+      const q = doc(db, `schools/${schoolId}/schedules`, c.id);
+      const docSnap = await getDoc(q);
+      if (docSnap.exists()) {
+        setScheduleData(docSnap.data().slots || []);
+      } else {
+        setScheduleData([]);
       }
-      const data = await res.json();
-      setScheduleData(data || []);
       setIsScheduleModalOpen(true);
     } catch (error) {
       console.error('Error opening schedule manager:', error);
@@ -68,13 +76,12 @@ export default function Classes() {
 
   const handleSaveSchedule = async () => {
     if (!selectedClassForSchedule) return;
-    const res = await fetch(`/api/schedules/${selectedClassForSchedule.id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(scheduleData),
-    });
-    if (res.ok) {
+    try {
+      await firebaseService.saveSchedule(schoolId, selectedClassForSchedule.id, scheduleData);
       setIsScheduleModalOpen(false);
+    } catch (err) {
+      console.error("Error saving schedule", err);
+      alert("Erro ao salvar grade horária.");
     }
   };
 
@@ -112,8 +119,7 @@ export default function Classes() {
     e.preventDefault();
     try {
       if (editingClass) {
-        // update logic
-        await firebaseService.addClass(schoolId, formData); // Simplification: add as update if needed
+        await firebaseService.updateClass(schoolId, editingClass.id, formData);
       } else {
         await firebaseService.addClass(schoolId, formData);
       }
@@ -122,6 +128,18 @@ export default function Classes() {
       resetForm();
     } catch (err) {
       console.error("Error saving class", err);
+      alert("Erro ao salvar turma.");
+    }
+  };
+
+  const handleDelete = async (classId: string) => {
+    if (confirm("Tem certeza que deseja excluir esta turma?")) {
+      try {
+        await firebaseService.deleteClass(schoolId, classId);
+      } catch (err) {
+        console.error("Error deleting class", err);
+        alert("Erro ao excluir turma.");
+      }
     }
   };
 
@@ -217,7 +235,13 @@ export default function Classes() {
                  >
                    <CalendarDays className="w-4 h-4" />
                  </button>
-                 <button className="text-indigo-600 text-xs font-bold hover:underline">Ver Diário</button>
+                 <button 
+                   onClick={() => handleDelete(c.id)}
+                   className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                   title="Excluir Turma"
+                 >
+                   <Trash2 className="w-4 h-4" />
+                 </button>
                </div>
             </div>
           </motion.div>

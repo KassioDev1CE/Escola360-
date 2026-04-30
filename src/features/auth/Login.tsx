@@ -98,7 +98,7 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
       } else if (err.code === 'auth/email-already-in-use') {
         setError("Este e-mail já está em uso.");
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError(`O login por E-mail/Senha está desativado no Firebase. Verifique se o provedor está 'Ativado' e se clicou em 'Salvar' no projeto gen-lang-client-0443157874.`);
+        setError(`Provedor Email/Senha desativado no Firebase. Ative-o em: console.firebase.google.com/project/gen-lang-client-0443157874/authentication`);
       } else if (err.code === 'auth/weak-password') {
         setError("A senha deve ter pelo menos 6 caracteres.");
       } else {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, Printer, User, Search, Download, ShieldCheck, Mail, MapPin } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Student {
   id: string;
@@ -24,6 +26,8 @@ interface ClassData {
 }
 
 export default function Documents() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
@@ -32,10 +36,10 @@ export default function Documents() {
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
 
   const [school, setSchool] = useState<SchoolInfo>({
-    name: "Colégio Santa Maria - Unidade Central",
+    name: "Colégio Santa Maria",
     cnpj: "12.345.678/0001-90",
-    address: "Rua das Flores, 123 - Jardim América, São Paulo - SP",
-    email: "secretaria@santamaria.edu.br",
+    address: "Rua das Flores, 123",
+    email: "secretaria@escola.edu.br",
     phone: "(11) 4002-8922",
     logoLetter: "S"
   });
@@ -47,14 +51,14 @@ export default function Documents() {
       setSchool(JSON.parse(savedConfig));
     }
 
-    Promise.all([
-      fetch('/api/students').then(res => res.json()),
-      fetch('/api/classes').then(res => res.json())
-    ]).then(([studentsData, classesData]) => {
-      setStudents(studentsData);
-      setClasses(classesData);
-    });
-  }, []);
+    const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
+
+    return () => {
+      unsubStudents();
+      unsubClasses();
+    };
+  }, [schoolId]);
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.ra.includes(searchTerm);

@@ -24,6 +24,8 @@ import {
   Lock,
   Key
 } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Teacher {
   id: string;
@@ -49,6 +51,8 @@ interface Teacher {
 }
 
 export default function Teachers() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [allSchedules, setAllSchedules] = useState<any>({});
@@ -71,48 +75,55 @@ export default function Teachers() {
   const [formData, setFormData] = useState(initialForm);
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [teacherRes, classRes, schedRes] = await Promise.all([
-        fetch('/api/teachers'),
-        fetch('/api/classes'),
-        fetch('/api/schedules')
-      ]);
-      const [teacherData, classData, schedData] = await Promise.all([
-        teacherRes.json(),
-        classRes.json(),
-        schedRes.json()
-      ]);
-      setTeachers(teacherData);
-      setClasses(classData);
-      setAllSchedules(schedData);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    const unsubTeachers = firebaseService.subscribeToTeachers(schoolId, (data) => {
+      setTeachers(data);
       setLoading(false);
-    }
-  };
+    });
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
+    const unsubSchedules = firebaseService.subscribeToSchedules(schoolId, setAllSchedules);
+
+    return () => {
+      unsubTeachers();
+      unsubClasses();
+      unsubSchedules();
+    };
+  }, [schoolId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = selectedTeacher ? `/api/teachers/${selectedTeacher.id}` : '/api/teachers';
-      const method = selectedTeacher ? 'PUT' : 'POST';
-      
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
-        setIsModalOpen(false);
-        setSelectedTeacher(null);
-        setFormData(initialForm);
-        fetchData();
+      if (selectedTeacher) {
+        await firebaseService.updateTeacher(schoolId, selectedTeacher.id, formData);
+      } else {
+        await firebaseService.addTeacher(schoolId, formData);
       }
+      setIsModalOpen(false);
+      setSelectedTeacher(null);
+      setFormData(initialForm);
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao salvar professor.");
+    }
+  };
+
+  const handleDelete = async (teacherId: string) => {
+    if (confirm("Tem certeza que deseja excluir este professor?")) {
+      try {
+        await firebaseService.deleteTeacher(schoolId, teacherId);
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao excluir professor.");
+      }
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!selectedTeacher || !newPassword) return;
+    try {
+      await firebaseService.updateTeacher(schoolId, selectedTeacher.id, { password: newPassword });
+      setIsPasswordModalOpen(false);
+      setNewPassword('');
+      alert('Senha atualizada com sucesso!');
     } catch (e) {
       console.error(e);
     }
@@ -133,24 +144,6 @@ export default function Teachers() {
     setSelectedTeacher(teacher);
     setNewPassword('');
     setIsPasswordModalOpen(true);
-  };
-
-  const handleUpdatePassword = async () => {
-    if (!selectedTeacher || !newPassword) return;
-    try {
-      const res = await fetch(`/api/teachers/${selectedTeacher.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword })
-      });
-      if (res.ok) {
-        setIsPasswordModalOpen(false);
-        setNewPassword('');
-        alert('Senha atualizada com sucesso!');
-      }
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleNewTeacher = () => {
@@ -265,6 +258,7 @@ export default function Teachers() {
                          <Lock className="w-4 h-4" />
                        </button>
                        <button 
+                        onClick={() => handleDelete(teacher.id)}
                         className="p-3 bg-slate-50 hover:bg-rose-600 group/btn rounded-xl text-slate-400 hover:text-white transition-all shadow-sm border border-slate-100"
                         title="Remover"
                        >
