@@ -87,22 +87,22 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
       if (err.code === 'auth/user-not-found') {
         if (role === 'admin') {
           setError("Este administrador ainda não está cadastrado no sistema.");
-          setIsRegistering(true); // Ativa modo cadastro automaticamente para facilitar
+          setIsRegistering(true);
         } else {
           setError("E-mail ou identificador não encontrado.");
         }
-      } else if (err.code === 'auth/wrong-password') {
-        setError("Senha incorreta. Tente novamente.");
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError("Credenciais inválidas. Verifique seu e-mail e senha.");
       } else if (err.code === 'auth/invalid-email') {
         setError("O formato do e-mail é inválido.");
       } else if (err.code === 'auth/email-already-in-use') {
         setError("Este e-mail já está em uso.");
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError("O login por E-mail/Senha não está ativado no Console do Firebase.");
+        setError(`O login por E-mail/Senha está desativado no Firebase. Verifique se o provedor está 'Ativado' e se clicou em 'Salvar' no projeto gen-lang-client-0443157874.`);
       } else if (err.code === 'auth/weak-password') {
         setError("A senha deve ter pelo menos 6 caracteres.");
       } else {
-        setError("Erro na autenticação: " + (err.message || "Verifique seus dados."));
+        setError(`Erro (${err.code}): ${err.message || "Tente novamente mais tarde."}`);
       }
     } finally {
       setLoading(false);
