@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import { z } from "zod";
 import { createServer as createViteServer } from "vite";
-import { CreateStudentSchema, createStudentAction } from "./server/actions/academic";
+import { CreateStudentSchema } from "../server/actions/academic";
 
 const app = express();
 const PORT = 3000;
@@ -52,34 +52,37 @@ app.get("/api/health", (req, res) => {
 
 // --- Auth ---
 app.post("/api/auth/login", (req, res) => {
-  const { identifier, password, role } = req.body;
+  try {
+    const { identifier, password, role } = req.body;
 
-  if (role === 'admin') {
-    const admin = db.users.find(u => u.email === identifier && u.password === password && u.role === 'admin');
-    if (admin) {
-      return res.json({ name: admin.name, role: 'admin', email: admin.email });
+    if (role === 'admin') {
+      const admin = db.users.find(u => u.email === identifier && u.password === password && u.role === 'admin');
+      if (admin) {
+        return res.json({ name: admin.name, role: 'admin', email: admin.email });
+      }
+    } else if (role === 'teacher') {
+      const teacher = db.teachers.find(t => t.email === identifier && t.password === password);
+      if (teacher) {
+        return res.json({ name: teacher.name, role: 'teacher', email: teacher.email, id: teacher.id });
+      }
+    } else if (role === 'parent') {
+      const cleanedCpf = identifier.replace(/\D/g, '');
+      const student = db.students.find(s => s.guardianCpf === cleanedCpf && s.guardianBirthDate === password);
+      if (student) {
+        const studentsList = db.students.filter(s => s.guardianCpf === cleanedCpf);
+        return res.json({
+          name: student.guardianName,
+          role: 'parent',
+          cpf: student.guardianCpf,
+          students: studentsList
+        });
+      }
     }
-  } else if (role === 'teacher') {
-    const teacher = db.teachers.find(t => t.email === identifier && t.password === password);
-    if (teacher) {
-      return res.json({ name: teacher.name, role: 'teacher', email: teacher.email, id: teacher.id });
-    }
-  } else if (role === 'parent') {
-    const cleanedCpf = identifier.replace(/\D/g, '');
-    const student = db.students.find(s => s.guardianCpf === cleanedCpf && s.guardianBirthDate === password);
-    if (student) {
-      // Encontra todos os alunos do mesmo responsável
-      const students = db.students.filter(s => s.guardianCpf === cleanedCpf);
-      return res.json({
-        name: student.guardianName,
-        role: 'parent',
-        cpf: student.guardianCpf,
-        students
-      });
-    }
+
+    res.status(401).json({ error: "Credenciais inválidas." });
+  } catch (err) {
+    res.status(500).json({ error: "Erro interno no servidor." });
   }
-
-  res.status(401).json({ error: "Credenciais inválidas." });
 });
 
 app.get("/api/dashboard/stats", authMiddleware, (req, res) => {
@@ -114,22 +117,14 @@ app.get("/api/students", authMiddleware, (req, res) => {
 });
 
 app.post("/api/students", authMiddleware, async (req: any, res) => {
-  console.log(`[POST] /api/students - Payload:`, JSON.stringify(req.body));
   try {
     const validatedData = CreateStudentSchema.parse(req.body);
     
-    // Auto-generate RA if not provided or empty
     let ra = validatedData.ra;
     if (!ra || ra.trim() === '') {
       const year = new Date().getFullYear();
       const count = db.students.filter(s => s.ra?.startsWith(year.toString())).length + 1;
       ra = `${year}${String(count).padStart(4, '0')}`;
-      
-      // Ensure uniqueness if the count already exists
-      while (db.students.some(s => s.ra === ra)) {
-        const suffix = Math.floor(Math.random() * 100);
-        ra = `${year}${String(count).padStart(4, '0')}${suffix}`;
-      }
     }
 
     const birthDate = validatedData.birthDate instanceof Date && !isNaN(validatedData.birthDate.getTime())
@@ -144,10 +139,8 @@ app.post("/api/students", authMiddleware, async (req: any, res) => {
       schoolId: req.schoolId
     };
     db.students.push(newStudent);
-    console.log(`[POST] /api/students - Success: ${newStudent.id}`);
     res.json({ success: true, data: newStudent });
   } catch (error) {
-    console.error(`[POST] /api/students - Error:`, error);
     res.status(400).json({ 
       error: error instanceof Error ? error.message : "Error",
       details: error instanceof z.ZodError ? (error as z.ZodError).issues : undefined
@@ -157,17 +150,13 @@ app.post("/api/students", authMiddleware, async (req: any, res) => {
 
 app.put("/api/students/:id", authMiddleware, async (req: any, res) => {
   const { id } = req.params;
-  console.log(`[PUT] /api/students/${id} - Payload:`, JSON.stringify(req.body));
   try {
     const index = db.students.findIndex(s => s.id === id);
     if (index === -1) {
       return res.status(404).json({ error: "Student not found" });
     }
 
-    // We allow partial updates on PUT in this mock implementation
-    // but let's at least ensure birthDate is valid if provided
     const studentData = { ...db.students[index], ...req.body };
-    
     if (req.body.birthDate) {
       const d = new Date(req.body.birthDate);
       if (!isNaN(d.getTime())) {
@@ -176,10 +165,8 @@ app.put("/api/students/:id", authMiddleware, async (req: any, res) => {
     }
 
     db.students[index] = studentData;
-    console.log(`[PUT] /api/students/${id} - Success`);
     res.json({ success: true, data: db.students[index] });
   } catch (error) {
-    console.error(`[PUT] /api/students/${id} - Error:`, error);
     res.status(400).json({ error: error instanceof Error ? error.message : "Error" });
   }
 });
@@ -272,10 +259,8 @@ app.get("/api/schedules", (req, res) => {
 app.post("/api/schedules/:classId", (req, res) => {
   try {
     const { classId } = req.params;
-    const schedule = req.body; // Expects Array of { day, period, subjectId, teacherId, startTime, endTime }
-    
+    const schedule = req.body;
     db.schedules[classId] = schedule;
-    
     res.json({ success: true, schedule });
   } catch (error) {
     res.status(500).json({ error: "Failed to save schedule" });
@@ -283,20 +268,16 @@ app.post("/api/schedules/:classId", (req, res) => {
 });
 
 // ---------------------------------------------------------
-// VITE MIDDLEWARE (Development)
+// VITE / STATIC SERVING
 // ---------------------------------------------------------
 
-async function setupVite() {
+async function start() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-    
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Escola360 rodando em http://localhost:${PORT}`);
-    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
@@ -304,8 +285,17 @@ async function setupVite() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // AI Studio always needs to listen on port 3000
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Escola360 rodando em http://localhost:${PORT}`);
+  });
 }
 
-setupVite();
+// Only start the server automation if not running on Vercel
+// Vercel only needs the exported app.
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  start();
+}
 
 export default app;
