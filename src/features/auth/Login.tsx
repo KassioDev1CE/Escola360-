@@ -22,8 +22,9 @@ interface LoginProps {
 }
 
 export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
-  const { signIn } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     identifier: '', // Email, Username or CPF
@@ -74,10 +75,22 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
     setError(null);
 
     try {
-      await signIn(form.identifier, form.password);
+      if (isRegistering) {
+        await signUp(form.identifier, form.password);
+      } else {
+        await signIn(form.identifier, form.password);
+      }
     } catch (err: any) {
-      console.error("Login fallacy:", err);
-      setError("Falha na autenticação. Verifique suas credenciais.");
+      console.error("Auth error:", err);
+      if (err.code === 'auth/user-not-found' && role === 'admin') {
+        setError("E-mail não encontrado. Deseja cadastrar esta conta de administrador?");
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError("Este e-mail já está cadastrado.");
+      } else if (err.code === 'auth/weak-password') {
+        setError("A senha deve ter pelo menos 6 caracteres.");
+      } else {
+        setError("Falha na autenticação. Verifique suas credenciais.");
+      }
     } finally {
       setLoading(false);
     }
@@ -102,8 +115,8 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
             <div className={`w-20 h-20 ${config.color} text-white rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-current/20`}>
               {config.icon}
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{config.title}</h1>
-            <p className="text-slate-500 font-medium text-sm mt-2">{config.desc}</p>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{isRegistering ? 'Cadastrar Admin' : config.title}</h1>
+            <p className="text-slate-500 font-medium text-sm mt-2">{isRegistering ? 'Crie sua conta de acesso inicial' : config.desc}</p>
           </div>
 
           <div className="space-y-4">
@@ -116,10 +129,11 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
                   </div>
                   <input 
                     required
+                    type={role === 'admin' ? "email" : "text"}
                     value={form.identifier}
                     onChange={e => setForm({...form, identifier: e.target.value})}
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-sm"
-                    placeholder={role === 'parent' ? "000.000.000-00" : "Seu identificador..."}
+                    placeholder={role === 'parent' ? "000.000.000-00" : "seu@email.com"}
                   />
                 </div>
               </div>
@@ -145,10 +159,21 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
                 <motion.div 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-bold border border-rose-100"
+                  className="flex flex-col gap-2 p-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-bold border border-rose-100"
                 >
-                  <AlertCircle className="w-4 h-4" />
-                  {error}
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                  {error.includes("não encontrado") && (
+                    <button 
+                      type="button"
+                      onClick={() => setIsRegistering(true)}
+                      className="text-blue-600 underline hover:text-blue-700 text-left mt-1"
+                    >
+                      Clique aqui para cadastrar com este e-mail
+                    </button>
+                  )}
                 </motion.div>
               )}
 
@@ -158,8 +183,18 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
                   loading ? 'bg-slate-400' : 'bg-slate-900 hover:bg-black shadow-slate-900/10'
                 }`}
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar Agora <ArrowRight className="w-4 h-4" /></>}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{isRegistering ? 'Criar e Entrar' : 'Entrar Agora'} <ArrowRight className="w-4 h-4" /></>}
               </button>
+              
+              {isRegistering && (
+                <button 
+                  type="button"
+                  onClick={() => setIsRegistering(false)}
+                  className="w-full text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 hover:text-slate-600"
+                >
+                  Voltar para o Login
+                </button>
+              )}
             </form>
           </div>
 

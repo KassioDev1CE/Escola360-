@@ -21,6 +21,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
+  signUp: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -46,14 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               name: 'Administrador',
-              email: firebaseUser.email,
+              email: firebaseUser.email || ADMIN_EMAIL,
               role: 'admin',
-              schoolId: 'cm_school_123' // Default school for now
+              schoolId: 'cm_school_123'
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
             setProfile(newProfile);
           } else {
-            console.warn("Usuário autenticado mas sem documento de perfil no Firestore.");
             setProfile(null);
           }
         } catch (err) {
@@ -70,18 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, pass: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
-      console.error("Erro no login Firebase:", error);
-      throw error;
-    }
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const signUp = async (email: string, pass: string) => {
+    const { createUserWithEmailAndPassword } = await import('firebase/auth');
+    await createUserWithEmailAndPassword(auth, email, pass);
   };
 
   const signOut = () => firebaseSignOut(auth);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
