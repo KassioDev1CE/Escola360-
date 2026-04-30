@@ -470,7 +470,7 @@ function LessonPlanView({ classes }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Data</label>
-              <input type="date" value={new Date().toISOString().split('T')[0]} className="w-full p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-blue-500/20" />
+              <input type="date" value={new Date().toISOString().split('T')[0]} readOnly className="w-full p-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-blue-500/20" />
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Turma / Carga Horária</label>
