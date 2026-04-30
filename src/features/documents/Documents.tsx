@@ -70,36 +70,57 @@ export default function Documents() {
 
   const handlePrint = (type: string) => {
     setIsGenerating(type);
-    console.log(`Iniciando geração de: ${type}`);
     
-    // Delay para garantir que o componente re-renderizou com os dados do documento oculto
+    // Garantir que os dados já estejam no DOM antes de imprimir
     setTimeout(() => {
-      try {
-        window.print();
-      } catch (e) {
-        console.error("Erro na impressão:", e);
-      } finally {
-        // Aguarda um pouco mais para o diálogo de impressão abrir antes de limpar o estado
-        setTimeout(() => setIsGenerating(null), 1000);
-      }
-    }, 800);
+      window.print();
+      // Espera o diálogo fechar ou o usuário cancelar para resetar
+      // Aumentando o tempo para garantir que a renderização foi capturada
+      setTimeout(() => setIsGenerating(null), 2000);
+    }, 500);
   };
 
   return (
     <div className="space-y-6">
-      {/* Estilos específicos para impressão - Forçando ocultar tudo exceto a área imprimível */}
+      {/* Estilos específicos para impressão */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          body * { visibility: hidden; }
-          #printable-area, #printable-area * { visibility: visible; }
-          #printable-area { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%;
-            height: auto;
+          /* Esconde tudo no body */
+          body * { 
+            visibility: hidden !important; 
           }
-          .no-print { display: none !important; }
+          
+          /* Mostra apenas a área de impressão e seus filhos */
+          #printable-area, #printable-area * { 
+            visibility: visible !important; 
+          }
+          
+          /* Posiciona a área de impressão no topo da página */
+          #printable-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+          }
+
+          /* Força as cores a serem impressas */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .no-print { 
+            display: none !important; 
+          }
+
+          @page {
+            margin: 0;
+            size: auto;
+          }
         }
       `}} />
 
