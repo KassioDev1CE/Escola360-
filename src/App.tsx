@@ -10,10 +10,12 @@ import {
   Search,
   FileText,
   Home,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, type ReactNode, useEffect } from 'react';
+import { useAuth } from './lib/AuthContext';
 
 // Feature Components
 import Dashboard from './features/dashboard/Dashboard';
@@ -32,20 +34,25 @@ type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
 type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings';
 
 export default function App() {
+  const { user, profile, loading, signOut } = useAuth();
   const [role, setRole] = useState<UserRole>('portal');
   const [authStep, setAuthStep] = useState<'portal' | 'login' | 'authenticated'>('portal');
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
 
   useEffect(() => {
-    const savedRole = sessionStorage.getItem('user_role');
-    const savedStep = sessionStorage.getItem('auth_step');
-    const savedUser = sessionStorage.getItem('current_user');
-
-    if (savedRole) setRole(savedRole as UserRole);
-    if (savedStep) setAuthStep(savedStep as any);
-    if (savedUser) setCurrentUser(JSON.parse(savedUser));
-  }, []);
+    if (!loading) {
+      if (user && profile) {
+        setRole(profile.role as UserRole);
+        setAuthStep('authenticated');
+      } else {
+        // Only reset if we were previously authenticated
+        if (authStep === 'authenticated') {
+          setRole('portal');
+          setAuthStep('portal');
+        }
+      }
+    }
+  }, [user, profile, loading]);
 
   const handleSelectRole = (newRole: UserRole) => {
     setRole(newRole);
@@ -54,23 +61,17 @@ export default function App() {
     } else {
       setAuthStep('login');
     }
-    sessionStorage.setItem('user_role', newRole);
   };
 
   const handleLoginSuccess = (user: any) => {
-    setCurrentUser(user);
+    // This is for legacy mock login, Firebase will trigger the useEffect above
     setAuthStep('authenticated');
-    sessionStorage.setItem('current_user', JSON.stringify(user));
-    sessionStorage.setItem('auth_step', 'authenticated');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     setRole('portal');
     setAuthStep('portal');
-    setCurrentUser(null);
-    sessionStorage.removeItem('user_role');
-    sessionStorage.removeItem('auth_step');
-    sessionStorage.removeItem('current_user');
   };
 
   const renderContent = () => {
@@ -86,20 +87,28 @@ export default function App() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   if (authStep === 'portal') {
     return <Portal onSelectRole={handleSelectRole} />;
   }
 
-  if (authStep === 'login') {
+  if (authStep === 'login' && !user) {
     return <Login role={role as any} onBack={() => setAuthStep('portal')} onLoginSuccess={handleLoginSuccess} />;
   }
 
   if (role === 'teacher') {
-    return <TeacherPortal onLogout={handleLogout} user={currentUser} />;
+    return <TeacherPortal onLogout={handleLogout} user={profile || user} />;
   }
 
   if (role === 'parent') {
-    return <ParentPortal onLogout={handleLogout} user={currentUser} />;
+    return <ParentPortal onLogout={handleLogout} user={profile || user} />;
   }
 
   return (
@@ -175,11 +184,11 @@ export default function App() {
             <div className="h-8 w-px bg-slate-800 mx-2"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-white">{currentUser?.name || 'Gestor Escola'}</p>
-                <p className="text-[10px] text-slate-500">{currentUser?.role === 'admin' ? 'Administrativo' : currentUser?.role || 'Usuário'}</p>
+                <p className="text-xs font-bold text-white">{(profile?.name || user?.displayName) || 'Gestor Escola'}</p>
+                <p className="text-[10px] text-slate-500">{profile?.role === 'admin' ? 'Administrativo' : profile?.role || 'Usuário'}</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 cursor-pointer hover:bg-slate-600 transition-colors">
-                AD
+                {(profile?.name || user?.displayName || 'AD').substring(0, 2).toUpperCase()}
               </div>
             </div>
           </div>

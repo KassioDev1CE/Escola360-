@@ -1,6 +1,8 @@
 import React, { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, User, Trash2, Calendar, Hash, Edit } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Student {
   id: string;
@@ -17,6 +19,8 @@ interface ClassData {
 }
 
 export default function Students() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,39 +59,15 @@ export default function Students() {
   });
 
   useEffect(() => {
-    fetchStudents();
-    fetchClasses();
-  }, []);
+    const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
+    setLoading(false);
 
-  const fetchStudents = async () => {
-    try {
-      const response = await fetch('/api/students');
-      if (!response.ok) {
-        console.error('Failed to fetch students', response.status);
-        return;
-      }
-      const data = await response.json();
-      setStudents(data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchClasses = async () => {
-    try {
-      const response = await fetch('/api/classes');
-      if (!response.ok) {
-        console.error('Failed to fetch classes', response.status);
-        return;
-      }
-      const data = await response.json();
-      setClasses(data);
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-    }
-  };
+    return () => {
+      unsubStudents();
+      unsubClasses();
+    };
+  }, [schoolId]);
 
   const handleEdit = (student: any) => {
     setEditingStudent(student);
@@ -124,30 +104,17 @@ export default function Students() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const method = editingStudent ? 'PUT' : 'POST';
-      const url = editingStudent ? `/api/students/${editingStudent.id}` : '/api/students';
-      
-      const payload = { ...formData };
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        setIsModalOpen(false);
-        setEditingStudent(null);
-        resetForm();
-        fetchStudents();
+      if (editingStudent) {
+        await firebaseService.updateStudent(schoolId, editingStudent.id, formData);
       } else {
-        const errorData = await response.json();
-        console.error('Server error:', errorData);
-        alert(`Erro ao salvar: ${errorData.error || 'Erro desconhecido'}`);
+        await firebaseService.addStudent(schoolId, formData);
       }
+      setIsModalOpen(false);
+      setEditingStudent(null);
+      resetForm();
     } catch (error) {
-      console.error('Fetch error:', error);
-      alert('Erro de conexão com o servidor. Verifique sua internet.');
+      console.error('Firestore save error:', error);
+      alert('Erro ao salvar no banco de dados.');
     }
   };
 

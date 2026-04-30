@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "student": {
+      "title": "Student",
+      "description": "Information about a student registered in a school",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "socialName": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date-time" },
+        "ra": { "type": "string" },
+        "cpf": { "type": "string" },
+        "rg": { "type": "string" },
+        "address": { "type": "string" },
+        "gender": { "type": "string" },
+        "race": { "type": "string" },
+        "traditionalCommunity": { "type": "string" },
+        "socialProgram": { "type": "string" },
+        "nationality": { "type": "string" },
+        "birthCountry": { "type": "string" },
+        "birthCity": { "type": "string" },
+        "motherName": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "guardianName": { "type": "string" },
+        "guardianCpf": { "type": "string" },
+        "guardianBirthDate": { "type": "string" },
+        "guardianPhone": { "type": "string" },
+        "guardianEmail": { "type": "string" },
+        "specialNeeds": { "type": "boolean" },
+        "publicTransport": { "type": "boolean" },
+        "disabilities": { "type": "array" },
+        "birthCertificate": { "type": "string" },
+        "classId": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "guardianCpf", "schoolId"]
+    },
+    "class": {
+      "title": "Class",
+      "description": "A school class or group of students",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "level": { "type": "string" },
+        "period": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "teacherNames": { "type": "array" },
+        "studentCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "schoolId"]
+    },
+    "teacher": {
+      "title": "Teacher",
+      "description": "School instructor profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subjects": { "type": "array" },
+        "schoolId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "schoolId"]
+    },
+    "finance": {
+      "title": "Finance Records",
+      "description": "Income or expense transactions for the school",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["INCOME", "EXPENSE"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "type", "schoolId"]
+    },
+    "schedule": {
+      "title": "Class Schedule",
+      "description": "Weekly schedule for a specific class",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "days": { "type": "object" },
+        "schoolId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "schoolId"]
+    },
+    "school": {
+      "title": "School",
+      "description": "School configuration and details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "settings": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "user_profile": {
+      "title": "User Profile",
+      "description": "Extended user information linked to Firebase Auth",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "teacher", "parent"] },
+        "schoolId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "role", "email"]
+    }
+  },
+  "firestore": {
+    "/schools/{schoolId}": {
+      "schema": "school",
+      "description": "Central school configuration"
+    },
+    "/schools/{schoolId}/students/{studentId}": {
+      "schema": "student",
+      "description": "Student database for the school"
+    },
+    "/schools/{schoolId}/classes/{classId}": {
+      "schema": "class",
+      "description": "Classes within the school"
+    },
+    "/schools/{schoolId}/teachers/{teacherId}": {
+      "schema": "teacher",
+      "description": "Teachers employed at the school"
+    },
+    "/schools/{schoolId}/finance/{financeId}": {
+      "schema": "finance",
+      "description": "Financial ledger for the school"
+    },
+    "/schools/{schoolId}/schedules/{scheduleId}": {
+      "schema": "schedule",
+      "description": "Schedules for classes"
+    },
+    "/users/{userId}": {
+      "schema": "user_profile",
+      "description": "Individual user profiles matched to Firebase Auth UID"
+    }
+  }
+}

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, School } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function Dashboard() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [schoolName, setSchoolName] = useState("Escola360");
   const [stats, setStats] = useState<any>({
     activeStudents: 0,
@@ -22,18 +26,15 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch('/api/dashboard/stats');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
+        const data = await firebaseService.getDashboardStats(schoolId);
+        if (data) setStats(data);
       } catch (err) {
         console.error("Erro ao buscar estatísticas:", err);
       }
     };
 
     fetchStats();
-  }, []);
+  }, [schoolId]);
 
   return (
     <div className="space-y-6">

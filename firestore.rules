@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdminFromUserDoc() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSchoolMember(schoolId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.schoolId == schoolId
+      );
+    }
+
+    // --- Validation Helpers ---
+    
+    function isValidStudent(data) {
+      return data.keys().hasAll(['name', 'guardianCpf', 'schoolId']) 
+        && data.name is string && data.name.size() >= 3 && data.name.size() <= 200
+        && data.guardianCpf is string && data.guardianCpf.size() >= 11 && data.guardianCpf.size() <= 14
+        && data.schoolId is string && isValidId(data.schoolId);
+    }
+
+    function isValidClass(data) {
+       return data.keys().hasAll(['name', 'schoolId'])
+         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+         && data.schoolId is string && isValidId(data.schoolId);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role'])
+        && data.uid == request.auth.uid
+        && data.email == request.auth.token.email
+        && data.role in ['admin', 'teacher', 'parent'];
+    }
+
+    // --- Matches ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdminFromUserDoc();
+      allow list: if isAdminFromUserDoc();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && incoming().role == existing().role && incoming().uid == existing().uid;
+    }
+
+    match /schools/{schoolId} {
+      allow get: if isSchoolMember(schoolId);
+      allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      
+      // Students
+      match /students/{studentId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if isSchoolMember(schoolId) && isValidStudent(incoming());
+        allow update: if isSchoolMember(schoolId) && isValidStudent(incoming());
+        allow delete: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
+
+      // Classes
+      match /classes/{classId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
+
+      // Finance
+      match /finance/{financeId} {
+        allow read, write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
+      
+      // Teachers
+      match /teachers/{teacherId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
+    }
+  }
+}

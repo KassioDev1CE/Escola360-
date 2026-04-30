@@ -10,8 +10,10 @@ import {
   ChevronLeft,
   Loader2,
   AlertCircle,
-  Calendar
+  Calendar,
+  LogIn
 } from 'lucide-react';
+import { useAuth } from '../../lib/AuthContext';
 
 interface LoginProps {
   role: 'admin' | 'teacher' | 'parent';
@@ -20,6 +22,7 @@ interface LoginProps {
 }
 
 export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
+  const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -63,6 +66,21 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
   };
 
   const config = getRoleConfig();
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+      // On success, AuthProvider will update state and App.tsx should react
+      // but for immediate callback:
+      // onLoginSuccess({ ... }); // This will be handled by App.tsx observing useAuth()
+    } catch (err: any) {
+      setError("Falha no login com Google.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,60 +137,76 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
             <p className="text-slate-500 font-medium text-sm mt-2">{config.desc}</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{config.userInput}</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                  <User className="w-4 h-4" />
-                </div>
-                <input 
-                  required
-                  value={form.identifier}
-                  onChange={e => setForm({...form, identifier: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-sm"
-                  placeholder={role === 'parent' ? "000.000.000-00" : "Seu identificador..."}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{config.passInput}</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                  {role === 'parent' ? <Calendar className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                </div>
-                <input 
-                  required
-                  type={config.type}
-                  value={form.password}
-                  onChange={e => setForm({...form, password: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-sm"
-                  placeholder={role === 'parent' ? "" : "••••••••"}
-                />
-              </div>
-            </div>
-
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-bold border border-rose-100"
-              >
-                <AlertCircle className="w-4 h-4" />
-                {error}
-              </motion.div>
-            )}
-
+          <div className="space-y-4">
             <button 
+              onClick={handleGoogleLogin}
               disabled={loading}
-              className={`w-full py-5 rounded-[1.5rem] font-black text-white shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-xs uppercase tracking-widest ${
-                loading ? 'bg-slate-400' : 'bg-slate-900 hover:bg-black shadow-slate-900/10'
-              }`}
+              className="w-full py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-3 font-bold text-sm hover:bg-slate-50 transition-colors"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar Agora <ArrowRight className="w-4 h-4" /></>}
+              <LogIn className="w-4 h-4" /> Entrar com Google
             </button>
-          </form>
+
+            <div className="flex items-center gap-4 py-2">
+              <div className="flex-1 h-px bg-slate-100"></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ou use seus dados</span>
+              <div className="flex-1 h-px bg-slate-100"></div>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{config.userInput}</label>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input 
+                    required
+                    value={form.identifier}
+                    onChange={e => setForm({...form, identifier: e.target.value})}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-sm"
+                    placeholder={role === 'parent' ? "000.000.000-00" : "Seu identificador..."}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{config.passInput}</label>
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    {role === 'parent' ? <Calendar className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  </div>
+                  <input 
+                    required
+                    type={config.type}
+                    value={form.password}
+                    onChange={e => setForm({...form, password: e.target.value})}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold text-sm"
+                    placeholder={role === 'parent' ? "" : "••••••••"}
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-2xl text-[11px] font-bold border border-rose-100"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </motion.div>
+              )}
+
+              <button 
+                disabled={loading}
+                className={`w-full py-5 rounded-[1.5rem] font-black text-white shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-xs uppercase tracking-widest ${
+                  loading ? 'bg-slate-400' : 'bg-slate-900 hover:bg-black shadow-slate-900/10'
+                }`}
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar Agora <ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
+          </div>
 
           {role === 'parent' && (
             <div className="mt-8 text-center">
