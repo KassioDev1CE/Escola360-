@@ -81,15 +81,28 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
         await signIn(form.identifier, form.password);
       }
     } catch (err: any) {
-      console.error("Auth error:", err);
-      if (err.code === 'auth/user-not-found' && role === 'admin') {
-        setError("E-mail não encontrado. Deseja cadastrar esta conta de administrador?");
+      console.error("Erro de Autenticação:", err.code, err.message);
+      
+      // Mapeamento de erros comuns do Firebase para mensagens amigáveis
+      if (err.code === 'auth/user-not-found') {
+        if (role === 'admin') {
+          setError("Este administrador ainda não está cadastrado no sistema.");
+          setIsRegistering(true); // Ativa modo cadastro automaticamente para facilitar
+        } else {
+          setError("E-mail ou identificador não encontrado.");
+        }
+      } else if (err.code === 'auth/wrong-password') {
+        setError("Senha incorreta. Tente novamente.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("O formato do e-mail é inválido.");
       } else if (err.code === 'auth/email-already-in-use') {
-        setError("Este e-mail já está cadastrado.");
+        setError("Este e-mail já está em uso.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError("O login por E-mail/Senha não está ativado no Console do Firebase.");
       } else if (err.code === 'auth/weak-password') {
         setError("A senha deve ter pelo menos 6 caracteres.");
       } else {
-        setError("Falha na autenticação. Verifique suas credenciais.");
+        setError("Erro na autenticação: " + (err.message || "Verifique seus dados."));
       }
     } finally {
       setLoading(false);
