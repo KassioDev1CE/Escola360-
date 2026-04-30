@@ -25,15 +25,7 @@ const db: {
   finance: [],
   teachers: [],
   schedules: {},
-  users: [
-    {
-      id: "admin-1",
-      name: "Administrador",
-      email: "kmurilo2012@gmail.com",
-      password: "Novasenha2024@",
-      role: "admin"
-    }
-  ]
+  users: []
 };
 
 // 1. Simulação de Middleware de Auth/Multi-tenancy
@@ -48,41 +40,6 @@ const authMiddleware = (req: any, res: any, next: any) => {
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", system: "Escola360" });
-});
-
-// --- Auth ---
-app.post("/api/auth/login", (req, res) => {
-  try {
-    const { identifier, password, role } = req.body;
-
-    if (role === 'admin') {
-      const admin = db.users.find(u => u.email === identifier && u.password === password && u.role === 'admin');
-      if (admin) {
-        return res.json({ name: admin.name, role: 'admin', email: admin.email });
-      }
-    } else if (role === 'teacher') {
-      const teacher = db.teachers.find(t => t.email === identifier && t.password === password);
-      if (teacher) {
-        return res.json({ name: teacher.name, role: 'teacher', email: teacher.email, id: teacher.id });
-      }
-    } else if (role === 'parent') {
-      const cleanedCpf = identifier.replace(/\D/g, '');
-      const student = db.students.find(s => s.guardianCpf === cleanedCpf && s.guardianBirthDate === password);
-      if (student) {
-        const studentsList = db.students.filter(s => s.guardianCpf === cleanedCpf);
-        return res.json({
-          name: student.guardianName,
-          role: 'parent',
-          cpf: student.guardianCpf,
-          students: studentsList
-        });
-      }
-    }
-
-    res.status(401).json({ error: "Credenciais inválidas." });
-  } catch (err) {
-    res.status(500).json({ error: "Erro interno no servidor." });
-  }
 });
 
 app.get("/api/dashboard/stats", authMiddleware, (req, res) => {

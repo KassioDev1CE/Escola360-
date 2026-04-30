@@ -22,7 +22,7 @@ interface LoginProps {
 }
 
 export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
-  const { signInWithGoogle } = useAuth();
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -38,9 +38,9 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
           desc: 'Gestão Central da Instituição',
           icon: <ShieldCheck className="w-10 h-10" />,
           color: 'bg-blue-600',
-          userInput: 'Usuário ou Email',
+          userInput: 'E-mail Institucional',
           passInput: 'Senha',
-          type: 'text'
+          type: 'password'
         };
       case 'teacher':
         return {
@@ -60,27 +60,13 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
           color: 'bg-emerald-600',
           userInput: 'CPF do Responsável',
           passInput: 'Data de Nascimento',
-          type: 'date'
+          type: 'password'
         };
+      default: return { title: 'Login', desc: '', userInput: 'Usuário', passInput: 'Senha', type: 'password' };
     }
   };
 
   const config = getRoleConfig();
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithGoogle();
-      // On success, AuthProvider will update state and App.tsx should react
-      // but for immediate callback:
-      // onLoginSuccess({ ... }); // This will be handled by App.tsx observing useAuth()
-    } catch (err: any) {
-      setError("Falha no login com Google.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,27 +74,10 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          identifier: form.identifier,
-          password: form.password,
-          role
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Falha na autenticação.');
-      }
-
-      onLoginSuccess(data);
+      await signIn(form.identifier, form.password);
     } catch (err: any) {
-      setError(err.message || 'Falha na autenticação. Verifique seus dados.');
+      console.error("Login fallacy:", err);
+      setError("Falha na autenticação. Verifique suas credenciais.");
     } finally {
       setLoading(false);
     }
@@ -138,20 +107,6 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
           </div>
 
           <div className="space-y-4">
-            <button 
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-3 font-bold text-sm hover:bg-slate-50 transition-colors"
-            >
-              <LogIn className="w-4 h-4" /> Entrar com Google
-            </button>
-
-            <div className="flex items-center gap-4 py-2">
-              <div className="flex-1 h-px bg-slate-100"></div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ou use seus dados</span>
-              <div className="flex-1 h-px bg-slate-100"></div>
-            </div>
-
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{config.userInput}</label>
