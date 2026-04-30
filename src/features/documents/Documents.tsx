@@ -233,9 +233,9 @@ export default function Documents() {
                   </div>
                 </div>
 
-                {/* Print Preview Template (Hidden from screen, shown on print) */}
-                <div id="printable-area" className="hidden print:block p-10 font-sans text-slate-900 bg-white">
-                   <div className="border-2 border-slate-900 p-8">
+                {/* Print Preview Template (Only shown on print or when generating) */}
+                <div id="printable-area" className={`${isGenerating ? 'block' : 'hidden'} print:block p-10 font-sans text-slate-900 bg-white`}>
+                   <div className="border-2 border-slate-900 p-8 min-h-[1000px] flex flex-col">
                       <div className="flex justify-between items-center border-b-2 border-slate-900 pb-6 mb-8">
                         <div>
                           <h1 className="text-2xl font-black uppercase tracking-tighter">{school.name}</h1>
@@ -247,7 +247,7 @@ export default function Documents() {
                         </div>
                       </div>
                       
-                      <div className="text-center my-12">
+                      <div className="text-center my-8">
                         <h2 className="text-xl font-black uppercase underline decoration-2 underline-offset-8">
                           {isGenerating === 'boletim' ? 'Boletim de Desempenho Escolar' : 
                            isGenerating === 'declaracao' ? 'Declaração de Matrícula e Frequência' :
@@ -255,17 +255,76 @@ export default function Documents() {
                         </h2>
                       </div>
 
-                      <div className="space-y-4 text-sm leading-relaxed text-justify mb-20">
-                        <p>Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de 2024.</p>
-                        <p>A presente declaração é a expressão da verdade e tem validade de 30 (trinta) dias a contar da data de sua emissão.</p>
+                      <div className="flex-1">
+                        {isGenerating === 'boletim' ? (
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                              <div className="border border-slate-900 p-2"><strong>Aluno:</strong> {selectedStudent.name}</div>
+                              <div className="border border-slate-900 p-2"><strong>RA:</strong> {selectedStudent.ra}</div>
+                              <div className="border border-slate-900 p-2"><strong>Turma:</strong> {classes.find(c => c.id === selectedStudent.classId)?.name || '-'}</div>
+                              <div className="border border-slate-900 p-2"><strong>Ano:</strong> 2024</div>
+                            </div>
+                            
+                            <table className="w-full border-collapse border border-slate-900 text-xs text-center">
+                              <thead>
+                                <tr className="bg-slate-100">
+                                  <th className="border border-slate-900 p-2">Componente Curricular</th>
+                                  <th className="border border-slate-900 p-2">1º Bim</th>
+                                  <th className="border border-slate-900 p-2">2º Bim</th>
+                                  <th className="border border-slate-900 p-2">3º Bim</th>
+                                  <th className="border border-slate-900 p-2">4º Bim</th>
+                                  <th className="border border-slate-900 p-2">Média</th>
+                                  <th className="border border-slate-900 p-2">Faltas</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {['Língua Portuguesa', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes'].map(disciplina => (
+                                  <tr key={disciplina}>
+                                    <td className="border border-slate-900 p-2 text-left font-bold">{disciplina}</td>
+                                    <td className="border border-slate-900 p-2">8.5</td>
+                                    <td className="border border-slate-900 p-2">9.0</td>
+                                    <td className="border border-slate-900 p-2">-</td>
+                                    <td className="border border-slate-900 p-2">-</td>
+                                    <td className="border border-slate-900 p-2">8.8</td>
+                                    <td className="border border-slate-900 p-2">2</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <p className="text-[10px] italic">* Dados parciais referentes aos bimestres concluídos.</p>
+                          </div>
+                        ) : isGenerating === 'ficha' ? (
+                          <div className="space-y-8">
+                             <div className="grid grid-cols-2 gap-y-4 text-sm">
+                               <div><strong>Nome Completo:</strong><br/>{selectedStudent.name}</div>
+                               <div><strong>Registro Acadêmico (RA):</strong><br/>{selectedStudent.ra}</div>
+                               <div><strong>Data de Nascimento:</strong><br/>15/05/2012</div>
+                               <div><strong>Turma Atual:</strong><br/>{classes.find(c => c.id === selectedStudent.classId)?.name || 'Não alocada'}</div>
+                               <div className="col-span-2"><strong>Filiação:</strong><br/>Maria Oliveira Souza e João Souza</div>
+                               <div className="col-span-2"><strong>Endereço:</strong><br/>Rua das Palmeiras, 456 - Bairro Novo</div>
+                             </div>
+                             
+                             <div className="mt-10">
+                               <h3 className="font-bold border-b border-slate-900 mb-2">Histórico de Ocorrências / Observações</h3>
+                               <div className="border border-slate-300 p-4 h-32 text-xs text-slate-400">
+                                 Nenhuma ocorrência disciplinar registrada até a presente data.
+                               </div>
+                             </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-6 text-sm leading-relaxed text-justify">
+                            <p className="mt-10">Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de 2024.</p>
+                            <p>A presente declaração é a expressão da verdade e tem validade de 30 (trinta) dias a contar da data de sua emissão.</p>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="mt-40 border-t border-slate-900 pt-2 text-center max-w-xs mx-auto">
+                      <div className="mt-20 border-t border-slate-900 pt-2 text-center max-w-xs mx-auto">
                         <p className="text-xs font-bold uppercase tracking-wider">Secretaria Acadêmica</p>
                         <p className="text-[10px] text-slate-500">{school.name}</p>
                       </div>
                       
-                      <div className="flex justify-between items-end mt-20 text-[8px] font-mono text-slate-400">
+                      <div className="flex justify-between items-end mt-auto pt-10 text-[8px] font-mono text-slate-400">
                         <span>Hash Autenticação: {Math.random().toString(36).substring(7).toUpperCase()}</span>
                         <span>Emitido via Escola360 em {new Date().toLocaleString('pt-BR')}</span>
                       </div>

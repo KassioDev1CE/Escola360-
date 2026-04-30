@@ -45,6 +45,7 @@ export default function Classes() {
     endTime: '', 
     days: [] as string[] 
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
@@ -75,13 +76,16 @@ export default function Classes() {
   };
 
   const handleSaveSchedule = async () => {
-    if (!selectedClassForSchedule) return;
+    if (!selectedClassForSchedule || loading) return;
+    setLoading(true);
     try {
       await firebaseService.saveSchedule(schoolId, selectedClassForSchedule.id, scheduleData);
       setIsScheduleModalOpen(false);
     } catch (err) {
       console.error("Error saving schedule", err);
       alert("Erro ao salvar grade horária.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,6 +121,8 @@ export default function Classes() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
     try {
       if (editingClass) {
         await firebaseService.updateClass(schoolId, editingClass.id, formData);
@@ -129,6 +135,8 @@ export default function Classes() {
     } catch (err) {
       console.error("Error saving class", err);
       alert("Erro ao salvar turma.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -272,9 +280,11 @@ export default function Classes() {
                 <div className="flex items-center gap-3">
                    <button 
                     onClick={handleSaveSchedule}
-                    className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:bg-black transition-all flex items-center gap-2 shadow-xl shadow-slate-900/10 uppercase tracking-widest"
+                    disabled={loading}
+                    className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:bg-black disabled:opacity-50 transition-all flex items-center gap-2 shadow-xl shadow-slate-900/10 uppercase tracking-widest"
                    >
-                     <Save className="w-4 h-4" /> Salvar Grade
+                     {loading ? <Clock className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
+                     {loading ? 'Salvando...' : 'Salvar Grade'}
                    </button>
                    <button 
                     onClick={() => setIsScheduleModalOpen(false)}
@@ -459,12 +469,17 @@ export default function Classes() {
                  <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                  disabled={loading}
+                  className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
                  >
                    Cancelar
                  </button>
-                 <button className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-xl active:scale-[0.98]">
-                  {editingClass ? 'Salvar Alterações' : 'Criar Turma'}
+                 <button 
+                  disabled={loading}
+                  className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                 >
+                   {loading && <Clock className="w-4 h-4 animate-spin" />}
+                   {loading ? 'Salvando...' : (editingClass ? 'Salvar Alterações' : 'Criar Turma')}
                 </button>
               </div>
             </form>

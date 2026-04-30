@@ -23,7 +23,8 @@ export default function Students() {
   const schoolId = profile?.schoolId || "cm_school_123";
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +62,7 @@ export default function Students() {
   useEffect(() => {
     const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
-    setLoading(false);
+    setInitialLoading(false);
 
     return () => {
       unsubStudents();
@@ -103,6 +104,8 @@ export default function Students() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (editingStudent) {
         await firebaseService.updateStudent(schoolId, editingStudent.id, formData);
@@ -115,6 +118,8 @@ export default function Students() {
     } catch (error) {
       console.error('Firestore save error:', error);
       alert('Erro ao salvar no banco de dados.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -215,7 +220,7 @@ export default function Students() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
+              {initialLoading ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">Carregando...</td></tr>
               ) : (
                 students
@@ -481,15 +486,22 @@ export default function Students() {
                    <button 
                     type="button"
                     onClick={() => { setIsModalOpen(false); setEditingStudent(null); }}
-                    className="px-6 py-3 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all flex-1"
+                    disabled={isSubmitting}
+                    className="px-6 py-3 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all flex-1 disabled:opacity-50"
                   >
                     Descartar Alterações
                   </button>
                   <button 
                     type="submit"
-                    className="px-8 py-3 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-black transition-all shadow-xl flex-1 active:scale-[0.98]"
+                    disabled={isSubmitting}
+                    className="px-8 py-3 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-black transition-all shadow-xl flex-1 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {editingStudent ? 'Salvar Alterações' : 'Finalizar Matrícula'}
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (editingStudent ? 'Salvar Alterações' : 'Finalizar Matrícula')}
                   </button>
                 </div>
               </form>
