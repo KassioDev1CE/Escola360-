@@ -355,5 +355,16 @@ export const firebaseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/transfers/${transferId}`);
     }
+  },
+
+  getStudentTransfers: async (schoolId: string, studentId: string) => {
+    try {
+      const colRef = collection(db, 'schools', schoolId, 'transfers');
+      const q = query(colRef, where('studentId', '==', studentId), orderBy('requestedAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/transfers`);
+    }
   }
 };

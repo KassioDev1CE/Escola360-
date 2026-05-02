@@ -37,6 +37,7 @@ export default function Documents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [occurrences, setOccurrences] = useState<any[]>([]);
+  const [studentTransfers, setStudentTransfers] = useState<any[]>([]);
   const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
   const [transferReason, setTransferReason] = useState('');
 
@@ -82,17 +83,22 @@ export default function Documents() {
 
   useEffect(() => {
     if (selectedStudentId) {
-      const fetchOccurrences = async () => {
+      const fetchData = async () => {
         try {
-          const data = await firebaseService.getOccurrences(schoolId, selectedStudentId);
-          setOccurrences(data || []);
+          const [occData, transData] = await Promise.all([
+            firebaseService.getOccurrences(schoolId, selectedStudentId),
+            firebaseService.getStudentTransfers(schoolId, selectedStudentId)
+          ]);
+          setOccurrences(occData || []);
+          setStudentTransfers(transData || []);
         } catch (err) {
           console.error(err);
         }
       };
-      fetchOccurrences();
+      fetchData();
     } else {
       setOccurrences([]);
+      setStudentTransfers([]);
     }
   }, [selectedStudentId, schoolId]);
 
@@ -282,11 +288,24 @@ export default function Documents() {
                       />
                       <DocCard 
                         title="Transferência Escolar" 
-                        desc="Solicitar transferência definitiva para outra instituição."
+                        desc={
+                          studentTransfers[0]?.status === 'pending' ? "Solicitação em análise pela gestão." :
+                          studentTransfers[0]?.status === 'approved' ? "Transferência aprovada. Clique para imprimir." :
+                          "Solicitar transferência definitiva para outra instituição."
+                        }
                         loading={isGenerating === 'transfer'}
-                        onClick={() => setIsRequestingTransfer(true)}
+                        onClick={() => {
+                          if (studentTransfers[0]?.status === 'approved') {
+                            handlePrint('transfer');
+                          } else if (studentTransfers[0]?.status === 'pending') {
+                            alert("Sua solicitação ainda está em análise pela diretoria.");
+                          } else {
+                            setIsRequestingTransfer(true);
+                          }
+                        }}
                         icon={<ArrowRightLeft className="w-6 h-6" />}
                         colorClass="amber"
+                        status={studentTransfers[0]?.status}
                       />
                     </div>
                   </div>
@@ -400,6 +419,25 @@ export default function Documents() {
                          )}
                        </div>
                     </div>
+                  ) : isGenerating === 'transfer' ? (
+                    <div className="space-y-8 text-sm leading-relaxed text-justify mt-10">
+                      <div className="text-center mb-10">
+                        <h3 className="text-xl font-black border-2 border-slate-900 inline-block px-6 py-2 uppercase">Guia de Transferência</h3>
+                      </div>
+                      <p>O <strong>{school.name}</strong>, por meio de sua secretaria acadêmica, certifica que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, portador(a) do RA <strong>{selectedStudent.ra}</strong>, regularmente matriculado(a) nesta instituição de ensino, teve sua solicitação de transferência DEFERIDA.</p>
+                      
+                      <div className="p-4 bg-slate-50 border border-slate-900">
+                        <p><strong>Motivo da Solicitação:</strong> {studentTransfers[0]?.reason || 'Não informado'}</p>
+                        <p><strong>Parecer da Gestão:</strong> {studentTransfers[0]?.observations || 'Transferência autorizada conforme regimento escolar.'}</p>
+                        <p><strong>Data de Autorização:</strong> {studentTransfers[0]?.resolvedAt?.toDate().toLocaleDateString('pt-BR') || new Date().toLocaleDateString('pt-BR')}</p>
+                      </div>
+
+                      <p>O(A) referido(a) aluno(a) está apto(a) a prosseguir with seus estudos em outra unidade escolar, levando consigo seu prontuário e ficha individual de rendimento acadêmico para as devidas equivalências curriculares.</p>
+                      
+                      <p>Damos por encerrado o vínculo de matrícula com esta instituição na presente data, ressalvadas as obrigações legais e administrativas decorrentes do período de permanência.</p>
+                      
+                      <p className="mt-10 text-right">{school.address.split(',')[1]?.split('-')[1]?.trim() || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+                    </div>
                   ) : (
                     <div className="space-y-6 text-sm leading-relaxed text-justify mt-10">
                       <p>Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de {school.academicYear || 2024}.</p>
@@ -500,7 +538,7 @@ export default function Documents() {
   );
 }
 
-function DocCard({ title, desc, onClick, loading, icon, colorClass = 'blue' }: { title: string, desc: string, onClick: () => void, loading: boolean, icon?: React.ReactNode, colorClass?: 'blue' | 'amber' }) {
+function DocCard({ title, desc, onClick, loading, icon, colorClass = 'blue', status }: { title: string, desc: string, onClick: () => void, loading: boolean, icon?: React.ReactNode, colorClass?: 'blue' | 'amber', status?: string }) {
   const colors = {
     blue: {
       border: 'hover:border-blue-200',
@@ -525,8 +563,16 @@ function DocCard({ title, desc, onClick, loading, icon, colorClass = 'blue' }: {
   return (
     <div 
       onClick={onClick}
-      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white ${activeColor.border} hover:shadow-xl ${activeColor.shadow} transition-all group cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white ${activeColor.border} hover:shadow-xl ${activeColor.shadow} transition-all group relative cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
     >
+      {status && (
+        <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[8px] font-black uppercase shadow-sm ${
+          status === 'approved' ? 'bg-emerald-500 text-white' : 
+          status === 'pending' ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
+        }`}>
+          {status === 'approved' ? 'Aprovado' : status === 'pending' ? 'Pendente' : 'Rejeitado'}
+        </div>
+      )}
       <div className="flex justify-between items-start mb-4">
         <div className={`p-3 bg-white rounded-xl shadow-sm ${activeColor.text} ${activeColor.bgHover} group-hover:text-white transition-all`}>
           {icon || <FileText className="w-6 h-6" />}
