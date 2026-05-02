@@ -33,6 +33,19 @@ import { firebaseService } from '../../lib/firebaseService';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
 
+// Helper to convert Firestore Timestamp or string to Date
+const toDate = (val: any) => {
+  if (!val) return null;
+  if (val.toDate && typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
+  if (val instanceof Date) return val;
+  try {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+};
+
 export default function Reports() {
   const { profile } = useAuth();
   const schoolId = profile?.schoolId || "";
@@ -142,14 +155,6 @@ export default function Reports() {
     }).slice(0, 10);
   }, [classes, students]);
 
-  // Helper to convert Firestore Timestamp or string to Date
-  const toDate = (val: any) => {
-    if (!val) return null;
-    if (val.toDate) return val.toDate(); // Firestore Timestamp
-    if (val instanceof Date) return val;
-    return new Date(val); // String or number
-  };
-
   // Helper for census date (Last Wednesday of May)
   const censusBaseDate = useMemo(() => {
     const year = new Date().getFullYear();
@@ -171,6 +176,7 @@ export default function Reports() {
       case 'map-doencas': return students.filter(s => s.healthConditions && s.healthConditions.length > 0);
       case 'map-transporte': return students.filter(s => s.publicTransport);
       case 'map-enturmacao': return students.filter(s => s.classId);
+      case 'map-raca': return students.filter(s => s.ethnicity && s.ethnicity !== 'Não Informado');
       case 'census-initial': 
         return students.filter(s => {
           const created = toDate(s.createdAt);
@@ -337,6 +343,41 @@ export default function Reports() {
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              {/* Performance Trend */}
+              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm col-span-full">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="font-black text-slate-800 text-lg">Evolução do Desempenho</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase">Média de Aprovação por Bimestre</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Aprovação</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Reprovação</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={performanceTrends}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', shadow: 'none' }}
+                        formatter={(value: any) => [`${value}%`]}
+                      />
+                      <Area type="monotone" dataKey="aprova" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} strokeWidth={3} />
+                      <Area type="monotone" dataKey="reprova" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.1} strokeWidth={3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
               {/* Age Distribution */}
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
@@ -400,6 +441,7 @@ export default function Reports() {
       case 'map-doencas':
       case 'map-transporte':
       case 'map-enturmacao':
+      case 'map-raca':
       case 'census-initial':
       case 'census-admitted':
         return (
@@ -600,19 +642,25 @@ export default function Reports() {
                 </div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-                <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-6">Infraestrutura</h3>
+                <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-6">Estrutura Física</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Salas de Aula</span>
-                    <span className="font-black text-slate-800">8</span>
+                    <span className="text-sm font-bold text-slate-600">Total de Turmas</span>
+                    <span className="font-black text-slate-800">{classes.length}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Laboratório de Informática</span>
-                    <span className="font-black text-emerald-600">Ativo</span>
+                    <span className="text-sm font-bold text-slate-600">Vagas Totais</span>
+                    <span className="font-black text-slate-800">
+                      {classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Biblioteca</span>
-                    <span className="font-black text-emerald-600">Disponível</span>
+                    <span className="text-sm font-bold text-slate-600">Taxa de Ocupação</span>
+                    <span className="font-black text-emerald-600">
+                      {classes.length > 0 ? (
+                        (students.length / classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0) * 100).toFixed(1)
+                      ) : 0}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -710,6 +758,7 @@ export default function Reports() {
                     className="overflow-hidden ml-4 mt-2 space-y-1 border-l-2 border-slate-100 pl-4"
                   >
                     <SubNavItem id="map-enturmacao" label="Mapa de Enturmação" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <SubNavItem id="map-raca" label="Mapa de Cor/Raça" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-deficiencia" label="Mapa Deficiência" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-doencas" label="Mapa de Doenças/Sídromes" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-notas" label="Mapa de Notas" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -817,6 +866,7 @@ function getTabLabel(id: string): string {
     'map-notas': 'Mapa de Notas',
     'map-infrequencia': 'Mapa de Infrequência',
     'map-transporte': 'Mapa de Transporte Escolar',
+    'map-raca': 'Mapa de Cor/Raça (Censo)',
     'census-initial': 'Matrícula Inicial (Censo)',
     'census-admitted': 'Alunos Admitidos (Pós-Censo)'
   };
