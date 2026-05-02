@@ -74,8 +74,13 @@ export const firebaseService = {
 
   addStudent: async (schoolId: string, studentData: any) => {
     try {
+      // Generate a unique RA if not provided (e.g., Year + 6 random digits)
+      const currentYear = new Date().getFullYear();
+      const generatedRa = studentData.ra || `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+      
       const docRef = await addDoc(collection(db, `schools/${schoolId}/students`), {
         ...studentData,
+        ra: generatedRa,
         schoolId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

@@ -54,6 +54,7 @@ export default function Students() {
   // Detalhes do Form de Matrícula
   const [formData, setFormData] = useState({
     name: '',
+    ra: '',
     socialName: '',
     birthDate: '',
     cpf: '',
@@ -132,6 +133,7 @@ export default function Students() {
     setEditingStudent(student);
     setFormData({
       name: student.name || '',
+      ra: student.ra || '',
       socialName: (student as any).socialName || '',
       birthDate: student.birthDate ? new Date(student.birthDate).toISOString().split('T')[0] : '',
       cpf: (student as any).cpf || '',
@@ -194,7 +196,7 @@ export default function Students() {
 
   const resetForm = () => {
     setFormData({
-      name: '', socialName: '', birthDate: '', cpf: '', rg: '', address: '',
+      name: '', ra: '', socialName: '', birthDate: '', cpf: '', rg: '', address: '',
       gender: '', race: '', traditionalCommunity: 'none', socialProgram: '',
       nationality: '', birthCountry: '', birthCity: '', motherName: '',
       fatherName: '', guardianName: '', guardianCpf: '', guardianBirthDate: '',
@@ -380,6 +382,9 @@ export default function Students() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Nome Completo *" icon={<User />}>
                       <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Maria Antonia" />
+                    </FormField>
+                    <FormField label="Número de Matrícula (RA)" icon={<Hash />}>
+                      <input value={formData.ra} onChange={e => setFormData({...formData, ra: e.target.value})} placeholder="Deixe em branco para gerar automaticamente" />
                     </FormField>
                     <FormField label="Nome Social" icon={<User />}>
                       <input value={formData.socialName} onChange={e => setFormData({...formData, socialName: e.target.value})} placeholder="Como o aluno deseja ser chamado" />
