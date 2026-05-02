@@ -38,6 +38,7 @@ export default function Reports() {
   const schoolId = profile?.schoolId || "";
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,10 @@ export default function Reports() {
       setClasses(data);
     });
 
+    const unsubTeachers = firebaseService.subscribeToTeachers(schoolId, (data) => {
+      setTeachers(data);
+    });
+
     const unsubGrades = firebaseService.subscribeToGrades(schoolId, (data) => {
       setGrades(data);
     });
@@ -84,6 +89,7 @@ export default function Reports() {
     return () => {
       unsubStudents();
       unsubClasses();
+      unsubTeachers();
       unsubGrades();
       unsubAttendance();
     };
@@ -95,11 +101,11 @@ export default function Reports() {
     const now = new Date();
     
     students.forEach(s => {
-      if (s.birthDate) {
-        const birth = new Date(s.birthDate);
-        let age = now.getFullYear() - birth.getFullYear();
-        const m = now.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+      const bDate = toDate(s.birthDate);
+      if (bDate) {
+        let age = now.getFullYear() - bDate.getFullYear();
+        const m = now.getMonth() - bDate.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < bDate.getDate())) age--;
         
         ageMap[age] = (ageMap[age] || 0) + 1;
       }
@@ -136,10 +142,18 @@ export default function Reports() {
     }).slice(0, 10);
   }, [classes, students]);
 
+  // Helper to convert Firestore Timestamp or string to Date
+  const toDate = (val: any) => {
+    if (!val) return null;
+    if (val.toDate) return val.toDate(); // Firestore Timestamp
+    if (val instanceof Date) return val;
+    return new Date(val); // String or number
+  };
+
   // Helper for census date (Last Wednesday of May)
   const censusBaseDate = useMemo(() => {
     const year = new Date().getFullYear();
-    const date = new Date(year, 5, 0); // Last day of May
+    const date = new Date(year, 4, 31); // Start from May 31 (month is 0-indexed, so 4 is May)
     while (date.getDay() !== 3) { // 3 is Wednesday
       date.setDate(date.getDate() - 1);
     }
@@ -152,20 +166,21 @@ export default function Reports() {
     switch (activeTab) {
       case 'alunos': return students;
       case 'transfers': return students.filter(s => s.status === 'Transferido' || s.status === 'Em Transferência');
-      case 'bolsas': return students.filter(s => s.scholarship || s.hasScholarship);
-      case 'map-deficiencia': return students.filter(s => s.disability && s.disability !== 'Nenhuma');
+      case 'bolsas': return students.filter(s => s.socialProgram === 'yes' || s.scholarship);
+      case 'map-deficiencia': return students.filter(s => s.disabilities && s.disabilities.length > 0);
       case 'map-doencas': return students.filter(s => s.healthConditions && s.healthConditions.length > 0);
-      case 'map-transporte': return students.filter(s => s.usesSchoolTransport);
+      case 'map-transporte': return students.filter(s => s.publicTransport);
+      case 'map-enturmacao': return students.filter(s => s.classId);
       case 'census-initial': 
         return students.filter(s => {
-          if (!s.createdAt) return true; // Default to census if no date
-          const created = new Date(s.createdAt);
+          const created = toDate(s.createdAt);
+          if (!created) return true; // Default to census if no date
           return created <= censusBaseDate;
         });
       case 'census-admitted':
         return students.filter(s => {
-          if (!s.createdAt) return false;
-          const created = new Date(s.createdAt);
+          const created = toDate(s.createdAt);
+          if (!created) return false;
           return created > censusBaseDate;
         });
       default: return students;
@@ -238,6 +253,49 @@ export default function Reports() {
     </div>
   );
 
+  // Real data for performance monitoring
+  const performanceTrends = useMemo(() => {
+    const bimestres = ['1º Bim', '2º Bim', '3º Bim', '4º Bim'];
+    return bimestres.map(bim => {
+      const bimKey = bim.charAt(0); // '1', '2', '3', '4'
+      const bimGrades = grades.filter(g => g[`b${bimKey}_grade`]);
+      const total = bimGrades.length;
+      const approved = bimGrades.filter(g => parseFloat(g[`b${bimKey}_grade`]) >= 6).length;
+      
+      const aprova = total > 0 ? (approved / total) * 100 : 0;
+      const reprova = total > 0 ? 100 - aprova : 0;
+      
+      return { 
+        name: bim, 
+        aprova: parseFloat(aprova.toFixed(1)), 
+        reprova: parseFloat(reprova.toFixed(1)),
+        total
+      };
+    });
+  }, [grades]);
+
+  // Helper for dashboard overview stats
+  const dashboardStats = useMemo(() => {
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    
+    const newStudents = students.filter(s => {
+      const created = toDate(s.createdAt);
+      return created && created > lastMonth;
+    }).length;
+
+    const totalAttendance = attendance.length;
+    const presents = attendance.filter(a => a.status === 'present').length;
+    const avgAttendance = totalAttendance > 0 ? ((presents / totalAttendance) * 100).toFixed(1) : '0';
+
+    return {
+      totalStudents: students.length,
+      activeClasses: classes.length,
+      avgAttendance: avgAttendance + '%',
+      newEnrollments: newStudents
+    };
+  }, [students, classes, attendance]);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'graficos':
@@ -271,10 +329,10 @@ export default function Reports() {
 
             {/* Overview Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatCard title="Total de Alunos" value={students.length} icon={<Users className="w-6 h-6" />} trend="+12%" color="indigo" />
-              <StatCard title="Turmas Ativas" value={classes.length} icon={<School className="w-6 h-6" />} color="blue" />
-              <StatCard title="Frequência Média" value="94.2%" icon={<UserCheck className="w-6 h-6" />} trend="+2.4%" color="emerald" />
-              <StatCard title="Matrículas Novas" value="48" icon={<UserCircle className="w-6 h-6" />} trend="+8%" color="orange" />
+              <StatCard title="Total de Alunos" value={dashboardStats.totalStudents} icon={<Users className="w-6 h-6" />} color="indigo" />
+              <StatCard title="Turmas Ativas" value={dashboardStats.activeClasses} icon={<School className="w-6 h-6" />} color="blue" />
+              <StatCard title="Frequência Média" value={dashboardStats.avgAttendance} icon={<UserCheck className="w-6 h-6" />} color="emerald" />
+              <StatCard title="Matrículas Novas (30d)" value={dashboardStats.newEnrollments} icon={<UserCircle className="w-6 h-6" />} color="orange" />
             </div>
 
             {/* Charts Grid */}
@@ -374,7 +432,7 @@ export default function Reports() {
                 )},
                 { header: 'Data Cadastro', key: 'createdAt', render: (s: any) => (
                   <span className="text-[11px] font-bold text-slate-500">
-                    {s.createdAt ? new Date(s.createdAt).toLocaleDateString('pt-BR') : '-'}
+                    {s.createdAt ? toDate(s.createdAt)?.toLocaleDateString('pt-BR') : '-'}
                   </span>
                 )},
                 { header: 'Status', key: 'status', render: (s: any) => (
@@ -526,16 +584,18 @@ export default function Reports() {
                 <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-6">Recursos Humanos</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Professores Efetivos</span>
-                    <span className="font-black text-slate-800">12</span>
+                    <span className="text-sm font-bold text-slate-600">Professores Cadastrados</span>
+                    <span className="font-black text-slate-800">{teachers.length}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Equipe Administrativa</span>
-                    <span className="font-black text-slate-800">4</span>
+                    <span className="text-sm font-bold text-slate-600">Turmas Ativas</span>
+                    <span className="font-black text-slate-800">{classes.length}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
-                    <span className="text-sm font-bold text-slate-600">Equipe de Apoio</span>
-                    <span className="font-black text-slate-800">6</span>
+                    <span className="text-sm font-bold text-slate-600">Média Alunos/Turma</span>
+                    <span className="font-black text-slate-800">
+                      {classes.length > 0 ? (students.length / classes.length).toFixed(1) : 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -568,16 +628,14 @@ export default function Reports() {
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
               <div className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={[
-                    { name: '1º Bim', aprova: 88, reprova: 12 },
-                    { name: '2º Bim', aprova: 92, reprova: 8 },
-                    { name: '3º Bim', aprova: 85, reprova: 15 },
-                    { name: '4º Bim', aprova: 95, reprova: 5 },
-                  ]}>
+                  <AreaChart data={performanceTrends}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
-                    <Tooltip contentStyle={{ borderRadius: '16px' }} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px' }} 
+                      formatter={(value: any) => [`${value}%`]}
+                    />
                     <Legend />
                     <Area type="monotone" dataKey="aprova" name="% Aprovação" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} />
                     <Area type="monotone" dataKey="reprova" name="% Reprovação" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.1} />

@@ -17,7 +17,8 @@ import {
   LayoutGrid,
   List,
   AlertCircle,
-  LogOut
+  LogOut,
+  Loader2
 } from 'lucide-react';
 
 import { firebaseService } from '../../lib/firebaseService';
