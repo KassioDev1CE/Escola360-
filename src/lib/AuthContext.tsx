@@ -12,7 +12,7 @@ interface UserProfile {
   uid: string;
   name: string;
   email: string;
-  role: 'admin' | 'teacher' | 'parent';
+  role: 'admin' | 'teacher' | 'parent' | 'director' | 'secretary';
   schoolId?: string;
 }
 

@@ -538,43 +538,47 @@ export const firebaseService = {
 
   // User Profiles Management
   subscribeToUserProfiles: (schoolId: string, callback: (profiles: any[]) => void) => {
-    const q = query(collection(db, `schools/${schoolId}/profiles`));
+    // We'll query users where schoolId matches
+    const q = query(collection(db, 'users'), where('schoolId', '==', schoolId));
     return onSnapshot(q, (snapshot) => {
       callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `schools/${schoolId}/profiles`));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
   },
 
   addUserProfile: async (schoolId: string, profileData: any) => {
     try {
-      await addDoc(collection(db, `schools/${schoolId}/profiles`), {
-        ...profileData,
+      const { uid, ...data } = profileData;
+      const targetId = uid || Math.random().toString(36).substr(2, 9);
+      await setDoc(doc(db, 'users', targetId), {
+        ...data,
+        uid: targetId,
         schoolId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/profiles`);
+      handleFirestoreError(error, OperationType.CREATE, 'users');
     }
   },
 
   updateUserProfile: async (schoolId: string, profileId: string, profileData: any) => {
     try {
-      const docRef = doc(db, `schools/${schoolId}/profiles`, profileId);
+      const docRef = doc(db, 'users', profileId);
       await updateDoc(docRef, {
         ...profileData,
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}/profiles/${profileId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${profileId}`);
     }
   },
 
   deleteUserProfile: async (schoolId: string, profileId: string) => {
     try {
-      const docRef = doc(db, `schools/${schoolId}/profiles`, profileId);
+      const docRef = doc(db, 'users', profileId);
       await deleteDoc(docRef);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/profiles/${profileId}`);
+      handleFirestoreError(error, OperationType.DELETE, `users/${profileId}`);
     }
   }
 };

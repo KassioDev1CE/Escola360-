@@ -13,17 +13,30 @@ import {
   Briefcase,
   IdCard,
   Calendar,
+  Lock,
+  Eye,
+  EyeOff,
   Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { firebaseService } from '../../lib/firebaseService';
+import { initializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut, inMemoryPersistence } from 'firebase/auth';
+import firebaseConfig from '../../../firebase-applet-config.json';
+
+// Initialize secondary auth instance to create users without logging out the admin
+const secondaryApp = initializeApp(firebaseConfig, 'SecondaryAuth');
+const secondaryAuth = getAuth(secondaryApp);
+secondaryAuth.setPersistence(inMemoryPersistence);
 
 interface UserProfile {
   id?: string;
+  uid?: string;
   cpf: string;
   name: string;
   email: string;
+  password?: string;
   birthDate: string;
   role: 'director' | 'admin' | 'secretary' | 'teacher' | 'parent';
   schoolId: string;
@@ -73,11 +86,14 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [creatingAuth, setCreatingAuth] = useState(false);
 
   const [formData, setFormData] = useState<Partial<UserProfile>>({
     cpf: '',
     name: '',
     email: '',
+    password: '',
     birthDate: '',
     role: 'secretary',
     schoolId: filterSchoolId
@@ -106,28 +122,66 @@ export default function UserManagement() {
       setMessage({ type: 'error', text: 'Selecione uma escola.' });
       return;
     }
+    
+    setLoading(true);
     const targetSchoolId = formData.schoolId;
+    
     try {
       if (editingUser?.id) {
-        await firebaseService.updateUserProfile(targetSchoolId, editingUser.id, formData);
+        // Update only profile data, auth password update not supported here for security
+        const { password, ...updateData } = formData;
+        await firebaseService.updateUserProfile(targetSchoolId, editingUser.id, updateData);
         setMessage({ type: 'success', text: 'Usuário atualizado com sucesso!' });
       } else {
-        await firebaseService.addUserProfile(targetSchoolId, formData);
-        setMessage({ type: 'success', text: 'Usuário cadastrado com sucesso!' });
+        // 1. Validate password
+        if (!formData.password || formData.password.length < 6) {
+          setMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres.' });
+          setLoading(false);
+          return;
+        }
+
+        setCreatingAuth(true);
+        // 2. Create User in Firebase Auth using secondary instance
+        let uid: string;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(
+            secondaryAuth, 
+            formData.email!, 
+            formData.password
+          );
+          uid = userCredential.user.uid;
+          // Sign out immediately from secondary instance to keep it clean
+          await signOut(secondaryAuth);
+        } catch (authErr: any) {
+          if (authErr.code === 'auth/email-already-in-use') {
+             throw new Error("Este email já está em uso no sistema.");
+          }
+          throw authErr;
+        } finally {
+          setCreatingAuth(false);
+        }
+
+        // 3. Create profile in Firestore
+        const { password, ...profileData } = formData;
+        await firebaseService.addUserProfile(targetSchoolId, { ...profileData, uid });
+        setMessage({ type: 'success', text: 'Usuário cadastrado e sincronizado com sucesso!' });
       }
       setIsModalOpen(false);
       setEditingUser(null);
-      setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId: targetSchoolId });
+      setFormData({ cpf: '', name: '', email: '', password: '', birthDate: '', role: 'secretary', schoolId: targetSchoolId });
       setTimeout(() => setMessage(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setMessage({ type: 'error', text: 'Erro ao salvar usuário.' });
+      setMessage({ type: 'error', text: err.message || 'Erro ao processar usuário.' });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEdit = (user: UserProfile) => {
     setEditingUser(user);
-    setFormData(user);
+    const { password, ...userData } = user;
+    setFormData(userData);
     setIsModalOpen(true);
   };
 
@@ -164,7 +218,7 @@ export default function UserManagement() {
         <button 
           onClick={() => {
             setEditingUser(null);
-            setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId: filterSchoolId });
+            setFormData({ cpf: '', name: '', email: '', password: '', birthDate: '', role: 'secretary', schoolId: filterSchoolId });
             setIsModalOpen(true);
           }}
           className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
@@ -374,7 +428,7 @@ export default function UserManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Email Profissional</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Email de Acesso</label>
                     <div className="relative">
                       <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input 
@@ -387,6 +441,30 @@ export default function UserManagement() {
                       />
                     </div>
                   </div>
+
+                  {!editingUser && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Senha de Acesso</label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                          required
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          placeholder="Mínimo 6 caracteres"
+                          className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-12 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Data de Nascimento</label>
@@ -448,10 +526,12 @@ export default function UserManagement() {
                     Descartar
                   </button>
                   <button 
+                    disabled={loading || creatingAuth}
                     type="submit" 
-                    className="flex-3 py-3.5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+                    className="flex-3 py-3.5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {editingUser ? 'Salvar Alterações' : 'Cadastrar Usuário'}
+                    {(loading || creatingAuth) && <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>}
+                    {editingUser ? 'Salvar Alterações' : 'Cadastrar e Sincronizar'}
                   </button>
                 </div>
               </form>

@@ -54,9 +54,7 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role'])
-        && data.uid == request.auth.uid
-        && data.email == request.auth.token.email
-        && data.role in ['admin', 'teacher', 'parent'];
+        && data.role in ['admin', 'teacher', 'parent', 'director', 'secretary'];
     }
 
     function isValidSchool(data) {
@@ -71,8 +69,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdminFromUserDoc();
       allow list: if isAdminFromUserDoc();
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && incoming().role == existing().role && incoming().uid == existing().uid;
+      allow create: if (isOwner(userId) && incoming().uid == userId && isValidUser(incoming())) || isAdminFromUserDoc();
+      allow update: if (isOwner(userId) || isAdminFromUserDoc()) && incoming().uid == userId;
     }
 
     match /schools/{schoolId} {

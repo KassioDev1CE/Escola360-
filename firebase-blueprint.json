@@ -116,11 +116,13 @@
         "uid": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "teacher", "parent"] },
+        "cpf": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["admin", "teacher", "parent", "director", "secretary"] },
         "schoolId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "role", "email"]
+      "required": ["uid", "role", "email", "name"]
     },
     "performance": {
       "title": "Student Performance",
