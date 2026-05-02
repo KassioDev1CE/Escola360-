@@ -12,10 +12,13 @@ import {
   Home,
   Briefcase,
   Loader2,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ChevronDown,
+  GraduationCap,
+  ClipboardCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, type ReactNode, useEffect } from 'react';
+import { useState, type ReactNode, useEffect, useRef } from 'react';
 import { useAuth } from './lib/AuthContext';
 
 // Feature Components
@@ -27,13 +30,14 @@ import Finance from './features/finance/Finance';
 import Documents from './features/documents/Documents';
 import SettingsView from './features/settings/Settings';
 import Transfers from './features/academic/Transfers';
+import Grades from './features/academic/Grades';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
 import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades';
 
 export default function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -86,6 +90,7 @@ export default function App() {
       case 'documents': return <Documents />;
       case 'settings': return <SettingsView />;
       case 'transfers': return <Transfers />;
+      case 'grades': return <Grades />;
       default: return <Dashboard />;
     }
   };
@@ -117,7 +122,7 @@ export default function App() {
   return (
     <div id="eduquest-app" className="flex flex-col h-screen w-full bg-slate-50 font-sans overflow-hidden">
       {/* Top Navigation */}
-      <header className="bg-slate-900 text-white shrink-0">
+      <header className="bg-slate-900 border-b border-white/5 text-white shrink-0">
         <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
@@ -132,41 +137,34 @@ export default function App() {
                 icon={<LayoutDashboard className="w-4 h-4" />}
                 label="Painel"
               />
-              <NavButton 
-                active={activeModule === 'students'} 
-                onClick={() => setActiveModule('students')}
-                icon={<Users className="w-4 h-4" />}
-                label="Alunos"
+              
+              <NavDropdown 
+                label="Escolar"
+                icon={<GraduationCap className="w-4 h-4" />}
+                active={['students', 'teachers', 'classes', 'transfers'].includes(activeModule)}
+                items={[
+                  { label: 'Alunos', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('students'), active: activeModule === 'students' },
+                  { label: 'Professores', icon: <Briefcase className="w-4 h-4" />, onClick: () => setActiveModule('teachers'), active: activeModule === 'teachers' },
+                  { label: 'Turmas', icon: <SchoolIcon className="w-4 h-4" />, onClick: () => setActiveModule('classes'), active: activeModule === 'classes' },
+                  { label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" />, onClick: () => setActiveModule('transfers'), active: activeModule === 'transfers' },
+                ]}
               />
-              <NavButton 
-                active={activeModule === 'teachers'} 
-                onClick={() => setActiveModule('teachers')}
-                icon={<Briefcase className="w-4 h-4" />}
-                label="Professores"
+
+              <NavDropdown 
+                label="Pedagógico"
+                icon={<ClipboardCheck className="w-4 h-4" />}
+                active={['grades', 'documents'].includes(activeModule)}
+                items={[
+                  { label: 'Notas e Frequência', icon: <GraduationCap className="w-4 h-4" />, onClick: () => setActiveModule('grades'), active: activeModule === 'grades' },
+                  { label: 'Documentos', icon: <FileText className="w-4 h-4" />, onClick: () => setActiveModule('documents'), active: activeModule === 'documents' },
+                ]}
               />
-              <NavButton 
-                active={activeModule === 'classes'} 
-                onClick={() => setActiveModule('classes')}
-                icon={<SchoolIcon className="w-4 h-4" />}
-                label="Turmas"
-              />
+
               <NavButton 
                 active={activeModule === 'finance'} 
                 onClick={() => setActiveModule('finance')}
                 icon={<Wallet className="w-4 h-4" />}
                 label="Financeiro"
-              />
-              <NavButton 
-                active={activeModule === 'documents'} 
-                onClick={() => setActiveModule('documents')}
-                icon={<FileText className="w-4 h-4" />}
-                label="Documentos"
-              />
-              <NavButton 
-                active={activeModule === 'transfers'} 
-                onClick={() => setActiveModule('transfers')}
-                icon={<ArrowRightLeft className="w-4 h-4" />}
-                label="Transf."
               />
             </nav>
           </div>
@@ -194,7 +192,7 @@ export default function App() {
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-white">{(profile?.name || user?.displayName) || 'Gestor Escola'}</p>
-                <p className="text-[10px] text-slate-500">{profile?.role === 'admin' ? 'Administrativo' : profile?.role || 'Usuário'}</p>
+                <p className="text-[10px] text-slate-500">{profile?.role === 'admin' ? 'Administrador' : profile?.role || 'Usuário'}</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 cursor-pointer hover:bg-slate-600 transition-colors">
                 {(profile?.name || user?.displayName || 'AD').substring(0, 2).toUpperCase()}
@@ -210,7 +208,17 @@ export default function App() {
            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider">
               <span className="text-slate-400">Escola<span className="text-blue-600">360</span></span>
               <ChevronRight className="w-3 h-3 text-slate-300" />
-              <span className="text-slate-900">{activeModule}</span>
+              <span className="text-slate-900">
+                {activeModule === 'grades' ? 'Notas e Frequência' : 
+                 activeModule === 'dashboard' ? 'Painel' :
+                 activeModule === 'students' ? 'Alunos' :
+                 activeModule === 'teachers' ? 'Professores' :
+                 activeModule === 'classes' ? 'Turmas' :
+                 activeModule === 'finance' ? 'Financeiro' :
+                 activeModule === 'documents' ? 'Documentos' :
+                 activeModule === 'settings' ? 'Configurações' :
+                 activeModule === 'transfers' ? 'Transferências' : activeModule}
+              </span>
            </div>
            <div className="flex items-center gap-4">
               <button 
@@ -253,7 +261,7 @@ export default function App() {
             <StatusIndicator dotColor="bg-emerald-500" label="Servidor: Online" />
             <StatusIndicator dotColor="bg-blue-400" label="Sincronização: Tempo Real" />
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">Escola<span className="text-blue-600">360</span> v2.8.0 • {new Date().getFullYear()} Built with Tech Solutions</p>
+          <p className="text-[10px] text-slate-400 font-medium">Escola<span className="text-blue-600">360</span> v2.8.5 • {new Date().getFullYear()} Built with Tech Solutions</p>
         </div>
       </footer>
     </div>
@@ -273,6 +281,67 @@ function NavButton({ active, onClick, icon, label }: { active: boolean; onClick:
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function NavDropdown({ label, icon, items, active }: { label: string; icon: ReactNode; items: { label: string, icon: ReactNode, onClick: () => void, active: boolean }[]; active: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all ${
+          active 
+            ? 'text-white bg-slate-800/50' 
+            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+        }`}
+      >
+        {icon}
+        <span>{label}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute top-full left-0 mt-2 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 p-1.5"
+          >
+            {items.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  item.onClick();
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  item.active 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

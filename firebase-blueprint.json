@@ -121,6 +121,25 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "role", "email"]
+    },
+    "performance": {
+      "title": "Student Performance",
+      "description": "Grades and absences for a student in a specific subject and class",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "subject": { "type": "string" },
+        "b1_grade": { "type": "string" },
+        "b1_absences": { "type": "string" },
+        "b2_grade": { "type": "string" },
+        "b2_absences": { "type": "string" },
+        "b3_grade": { "type": "string" },
+        "b3_absences": { "type": "string" },
+        "b4_grade": { "type": "string" },
+        "b4_absences": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -131,6 +150,10 @@
     "/schools/{schoolId}/students/{studentId}": {
       "schema": "student",
       "description": "Student database for the school"
+    },
+    "/schools/{schoolId}/students/{studentId}/performance/{performanceId}": {
+      "schema": "performance",
+      "description": "Academic performance for a specific student"
     },
     "/schools/{schoolId}/classes/{classId}": {
       "schema": "class",

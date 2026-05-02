@@ -11,7 +11,8 @@ import {
   getDocs,
   getDoc,
   setDoc,
-  orderBy
+  orderBy,
+  writeBatch
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
@@ -211,6 +212,46 @@ export const firebaseService = {
       await deleteDoc(docRef);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/teachers/${teacherId}`);
+    }
+  },
+
+  // Performance Management (Grades and Attendance)
+  saveGrades: async (schoolId: string, classId: string, subject: string, gradesData: any[]) => {
+    try {
+      const batch = writeBatch(db);
+      gradesData.forEach(grade => {
+        const docRef = doc(db, `schools/${schoolId}/students/${grade.studentId}/performance/${classId}_${subject}`);
+        batch.set(docRef, {
+          ...grade,
+          subject,
+          classId,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/students/grades`);
+    }
+  },
+
+  getGradesByClass: async (schoolId: string, classId: string) => {
+    try {
+      const studentsQuery = query(collection(db, `schools/${schoolId}/students`), where('classId', '==', classId));
+      const studentsSnapshot = await getDocs(studentsQuery);
+      
+      const studentsGrades = await Promise.all(studentsSnapshot.docs.map(async (studentDoc) => {
+        const perfQuery = query(collection(db, `schools/${schoolId}/students/${studentDoc.id}/performance`));
+        const perfSnapshot = await getDocs(perfQuery);
+        return {
+          studentId: studentDoc.id,
+          studentName: studentDoc.data().name,
+          performance: perfSnapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        };
+      }));
+      
+      return studentsGrades;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/performance`);
     }
   },
 
