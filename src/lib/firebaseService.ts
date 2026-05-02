@@ -74,9 +74,11 @@ export const firebaseService = {
 
   addStudent: async (schoolId: string, studentData: any) => {
     try {
-      // Generate a unique RA if not provided (e.g., Year + 6 random digits)
+      // Ensure a unique RA if not provided
       const currentYear = new Date().getFullYear();
-      const generatedRa = studentData.ra || `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+      const generatedRa = studentData.ra && studentData.ra.trim() !== '' 
+        ? studentData.ra 
+        : `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
       
       const docRef = await addDoc(collection(db, `schools/${schoolId}/students`), {
         ...studentData,
@@ -94,8 +96,19 @@ export const firebaseService = {
   updateStudent: async (schoolId: string, studentId: string, studentData: any) => {
     try {
       const docRef = doc(db, `schools/${schoolId}/students`, studentId);
+      
+      // If RA is being cleared or is missing, we might want to preserve it or generate it
+      // But usually for updates we just take what's in the form.
+      // However, if it's empty, we should probably generate one if the record didn't have one.
+      let finalRa = studentData.ra;
+      if (!finalRa || finalRa.trim() === '') {
+        const currentYear = new Date().getFullYear();
+        finalRa = `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+      }
+
       await updateDoc(docRef, {
         ...studentData,
+        ra: finalRa,
         updatedAt: serverTimestamp(),
       });
     } catch (error) {

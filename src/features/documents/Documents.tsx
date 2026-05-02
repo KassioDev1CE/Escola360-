@@ -103,7 +103,7 @@ export default function Documents() {
   }, [selectedStudentId, schoolId]);
 
   const filteredStudents = students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.ra.includes(searchTerm);
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.ra || '').includes(searchTerm);
     const matchesClass = selectedClassId === 'all' || s.classId === selectedClassId;
     return matchesSearch && matchesClass;
   });
@@ -217,7 +217,7 @@ export default function Documents() {
                     </div>
                     <div>
                       <p className="text-xs font-bold truncate max-w-[150px]">{s.name}</p>
-                      <p className={`text-[10px] ${selectedStudentId === s.id ? 'text-blue-100' : 'text-slate-400'}`}>RA: {s.ra}</p>
+                      <p className={`text-[10px] ${selectedStudentId === s.id ? 'text-blue-100' : 'text-slate-400'}`}>RA: {s.ra || 'N/D'}</p>
                     </div>
                   </div>
                 ))
@@ -408,7 +408,7 @@ export default function Documents() {
                         <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Discente</p>
                           <p className="text-sm font-bold text-slate-800">{selectedStudent.name}</p>
-                          <p className="text-[10px] text-slate-500 font-medium">RA: {selectedStudent.ra}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">RA: {selectedStudent.ra || 'REGISTRO PENDENTE'}</p>
                         </div>
                         <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Enturmação</p>
@@ -458,7 +458,7 @@ export default function Documents() {
                          </div>
                          <div className="space-y-1">
                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Matrícula Escolar (RA)</p>
-                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">{selectedStudent.ra}</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">{selectedStudent.ra || 'PENDENTE'}</p>
                          </div>
                          <div className="space-y-1">
                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Data de Nascimento</p>
@@ -509,7 +509,7 @@ export default function Documents() {
                          </div>
                       </div>
 
-                      <p>O <strong>{school.name}</strong>, devidamente credenciado pelos órgãos de regulação de ensino sob o CNPJ {school.cnpj}, certifica para todos os fins acadêmicos e legais que o discente <strong>{selectedStudent.name}</strong>, portador do número de registro (RA) <strong>{selectedStudent.ra}</strong>, teve seu pedido de desligamento e transferência <strong>DEFERIDO</strong> com sucesso.</p>
+                      <p>O <strong>{school.name}</strong>, devidamente credenciado pelos órgãos de regulação de ensino sob o CNPJ {school.cnpj}, certifica para todos os fins acadêmicos e legais que o discente <strong>{selectedStudent.name}</strong>, portador do número de registro (RA) <strong>{selectedStudent.ra || 'PENDENTE'}</strong>, teve seu pedido de desligamento e transferência <strong>DEFERIDO</strong> com sucesso.</p>
 
                       <div className="grid grid-cols-1 gap-4 bg-slate-50 p-6 border-l-4 border-indigo-600 rounded-r-2xl italic text-sm">
                         <p><strong>Justificativa da Solicitação:</strong> {studentTransfers[0]?.reason || 'Motivos de foro particular / Mudança de Comarca.'}</p>
@@ -523,7 +523,7 @@ export default function Documents() {
                     </div>
                   ) : (
                     <div className="space-y-10 text-[16px] document-content text-justify mt-16 leading-extra-relaxed">
-                      <p>Declaramos para os devidos fins de interesse do requisitante que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, devidamente inscrito sob o Registro Acadêmico (RA) <strong>{selectedStudent.ra}</strong>, encontra-se com matrícula <strong>ATIVA</strong> e regular nesta unidade de ensino.</p>
+                      <p>Declaramos para os devidos fins de interesse do requisitante que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, devidamente inscrito sob o Registro Acadêmico (RA) <strong>{selectedStudent.ra || 'PENDENTE'}</strong>, encontra-se com matrícula <strong>ATIVA</strong> e regular nesta unidade de ensino.</p>
                       
                       <p>O referido discente está enturmado no(a) <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong>, assistindo aula regularmente no período letivo de {school.academicYear || 2024}, cumprindo integralmente com todas as exigências regimentais, pedagógicas e administrativas previstas no plano de ensino aprovado.</p>
                       
@@ -599,7 +599,7 @@ export default function Documents() {
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Aluno Alvo</p>
                    <p className="text-sm font-bold text-slate-800">{selectedStudent.name}</p>
-                   <p className="text-[10px] text-slate-500">RA: {selectedStudent.ra}</p>
+                   <p className="text-[10px] text-slate-500">RA: {selectedStudent.ra || 'PENDENTE'}</p>
                 </div>
 
                 <div className="space-y-2">

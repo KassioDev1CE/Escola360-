@@ -286,7 +286,7 @@ export default function Students() {
                 students
                   .filter(s => {
                     const matchesClass = selectedClassFilter === 'all' || (s as any).classId === selectedClassFilter;
-                    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.ra.includes(searchTerm);
+                    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.ra || '').includes(searchTerm);
                     return matchesClass && matchesSearch;
                   })
                   .length === 0 ? (
@@ -295,7 +295,7 @@ export default function Students() {
                     students
                       .filter(s => {
                         const matchesClass = selectedClassFilter === 'all' || (s as any).classId === selectedClassFilter;
-                        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.ra.includes(searchTerm);
+                        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.ra || '').includes(searchTerm);
                         return matchesClass && matchesSearch;
                       })
                       .map((student) => (
@@ -308,7 +308,7 @@ export default function Students() {
                               <span className="font-medium text-slate-700">{student.name}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 font-mono">{student.ra}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500 font-mono italic">{student.ra || 'Gerando...'}</td>
                           <td className="px-6 py-4 text-sm text-slate-500 font-medium">{(student as any).classId ? classes.find(c => c.id === (student as any).classId)?.name : 'Não alocado'}</td>
                           <td className="px-6 py-4 text-sm text-slate-500 text-nowrap">
                             {new Date(student.birthDate).toLocaleDateString('pt-BR')}

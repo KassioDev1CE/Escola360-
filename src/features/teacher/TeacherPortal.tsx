@@ -432,7 +432,7 @@ function StudentAttendanceCard({ student }: any) {
         </div>
         <div className="flex-1 truncate">
            <p className="text-xs font-black text-slate-800 truncate">{student.name}</p>
-           <p className="text-[9px] font-bold text-slate-400 italic">RA: {student.ra}</p>
+           <p className="text-[9px] font-bold text-slate-400 italic">RA: {student.ra || 'N/D'}</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
