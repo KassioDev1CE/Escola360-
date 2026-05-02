@@ -132,15 +132,15 @@ export default function Reports() {
   const genderData = useMemo(() => {
     let m = 0, f = 0, o = 0;
     students.forEach(s => {
-      const g = (s.gender || '').toLowerCase();
-      if (g === 'male' || g === 'masculino') m++;
-      else if (g === 'female' || g === 'feminino') f++;
+      const g = (s.gender || '').toUpperCase();
+      if (g === 'M') m++;
+      else if (g === 'F') f++;
       else o++;
     });
     return [
       { name: 'Masculino', value: m },
       { name: 'Feminino', value: f },
-      { name: 'Outro', value: o }
+      { name: 'Outro/NB', value: o }
     ].filter(v => v.value > 0);
   }, [students]);
 
@@ -174,9 +174,9 @@ export default function Reports() {
       case 'bolsas': return students.filter(s => s.socialProgram === 'yes' || s.scholarship);
       case 'map-deficiencia': return students.filter(s => s.disabilities && s.disabilities.length > 0);
       case 'map-doencas': return students.filter(s => s.healthConditions && s.healthConditions.length > 0);
-      case 'map-transporte': return students.filter(s => s.publicTransport);
+      case 'map-transporte': return students.filter(s => s.publicTransport === true);
       case 'map-enturmacao': return students.filter(s => s.classId);
-      case 'map-raca': return students.filter(s => s.ethnicity && s.ethnicity !== 'Não Informado');
+      case 'map-raca': return students.filter(s => s.race && s.race !== '');
       case 'census-initial': 
         return students.filter(s => {
           const created = toDate(s.createdAt);
@@ -285,18 +285,22 @@ export default function Reports() {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
     
-    const newStudents = students.filter(s => {
+    const safeStudents = Array.isArray(students) ? students : [];
+    const safeAttendance = Array.isArray(attendance) ? attendance : [];
+    const safeClasses = Array.isArray(classes) ? classes : [];
+
+    const newStudents = safeStudents.filter(s => {
       const created = toDate(s.createdAt);
       return created && created > lastMonth;
     }).length;
 
-    const totalAttendance = attendance.length;
-    const presents = attendance.filter(a => a.status === 'present').length;
+    const totalAttendance = safeAttendance.length;
+    const presents = safeAttendance.filter(a => a.status === 'present').length;
     const avgAttendance = totalAttendance > 0 ? ((presents / totalAttendance) * 100).toFixed(1) : '0';
 
     return {
-      totalStudents: students.length,
-      activeClasses: classes.length,
+      totalStudents: safeStudents.length,
+      activeClasses: safeClasses.length,
       avgAttendance: avgAttendance + '%',
       newEnrollments: newStudents
     };
