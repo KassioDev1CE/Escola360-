@@ -38,6 +38,8 @@ export default function Documents() {
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [occurrences, setOccurrences] = useState<any[]>([]);
   const [studentTransfers, setStudentTransfers] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [performance, setPerformance] = useState<any[]>([]);
   const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
   const [transferReason, setTransferReason] = useState('');
 
@@ -79,6 +81,11 @@ export default function Documents() {
         });
       }
     });
+    
+    firebaseService.getSubjects(schoolId).then(data => {
+      setSubjects(data || []);
+    });
+
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
 
     return () => {
@@ -91,12 +98,14 @@ export default function Documents() {
     if (selectedStudentId) {
       const fetchData = async () => {
         try {
-          const [occData, transData] = await Promise.all([
+          const [occData, transData, perfData] = await Promise.all([
             firebaseService.getOccurrences(schoolId, selectedStudentId),
-            firebaseService.getStudentTransfers(schoolId, selectedStudentId)
+            firebaseService.getStudentTransfers(schoolId, selectedStudentId),
+            firebaseService.getStudentPerformance(schoolId, selectedStudentId)
           ]);
           setOccurrences(occData || []);
           setStudentTransfers(transData || []);
+          setPerformance(perfData || []);
         } catch (err) {
           console.error(err);
         }
@@ -105,6 +114,7 @@ export default function Documents() {
     } else {
       setOccurrences([]);
       setStudentTransfers([]);
+      setPerformance([]);
     }
   }, [selectedStudentId, schoolId]);
 
@@ -437,16 +447,34 @@ export default function Documents() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
-                            {['Língua Portuguesa', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes', 'Inglês', 'Educação Física'].map(disciplina => (
-                              <tr key={disciplina} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-3 text-left font-bold text-slate-800">{disciplina}</td>
-                                {[8.5, 9.0, '-', '-', 8.8, 2].map((val, idx) => (
-                                  <td key={idx} className={`p-3 font-medium ${idx === 4 ? 'bg-indigo-50 font-black text-indigo-700' : ''}`}>
-                                    {val}
-                                  </td>
-                                ))}
+                            {subjects.length > 0 ? subjects.map(disciplina => {
+                               const subPerf = performance.find(p => p.subject === disciplina.name);
+                               const g1 = subPerf?.b1_grade || '-';
+                               const g2 = subPerf?.b2_grade || '-';
+                               const g3 = subPerf?.b3_grade || '-';
+                               const g4 = subPerf?.b4_grade || '-';
+                               
+                               const grades = [g1, g2, g3, g4].filter(g => g !== '-');
+                               const media = grades.length > 0 ? (grades.reduce((acc, g) => acc + parseFloat(g), 0) / grades.length).toFixed(1) : '-';
+                               const faltas = [subPerf?.b1_absences, subPerf?.b2_absences, subPerf?.b3_absences, subPerf?.b4_absences]
+                                              .reduce((acc, f) => acc + (parseInt(f || '0') || 0), 0);
+
+                               return (
+                                <tr key={disciplina.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="p-3 text-left font-bold text-slate-800">{disciplina.name}</td>
+                                  <td className="p-3 font-medium">{g1}</td>
+                                  <td className="p-3 font-medium">{g2}</td>
+                                  <td className="p-3 font-medium">{g3}</td>
+                                  <td className="p-3 font-medium">{g4}</td>
+                                  <td className="p-3 font-black text-indigo-700 bg-indigo-50">{media}</td>
+                                  <td className="p-3 font-medium">{faltas}</td>
+                                </tr>
+                               );
+                            }) : (
+                              <tr>
+                                <td colSpan={7} className="p-10 text-center text-slate-400 italic">Nenhuma disciplina cadastrada para este colégio.</td>
                               </tr>
-                            ))}
+                            )}
                           </tbody>
                         </table>
                       </div>

@@ -140,6 +140,16 @@
         "b4_absences": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "subject": {
+      "title": "School Subject",
+      "description": "A subject offered by the school",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -154,6 +164,10 @@
     "/schools/{schoolId}/students/{studentId}/performance/{performanceId}": {
       "schema": "performance",
       "description": "Academic performance for a specific student"
+    },
+    "/schools/{schoolId}/subjects/{subjectId}": {
+      "schema": "subject",
+      "description": "Subjects offered by the school"
     },
     "/schools/{schoolId}/classes/{classId}": {
       "schema": "class",

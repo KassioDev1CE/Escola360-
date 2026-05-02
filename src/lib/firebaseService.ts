@@ -215,19 +215,73 @@ export const firebaseService = {
     }
   },
 
+  // Subjects Management
+  getSubjects: async (schoolId: string) => {
+    try {
+      const q = query(collection(db, `schools/${schoolId}/subjects`), orderBy('name'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/subjects`);
+    }
+  },
+
+  subscribeToSubjects: (schoolId: string, callback: (subjects: any[]) => void) => {
+    const q = query(collection(db, `schools/${schoolId}/subjects`), orderBy('name'));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/subjects`);
+    });
+  },
+
+  addSubject: async (schoolId: string, subjectData: any) => {
+    try {
+      const docRef = await addDoc(collection(db, `schools/${schoolId}/subjects`), {
+        ...subjectData,
+        createdAt: serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/subjects`);
+    }
+  },
+
+  deleteSubject: async (schoolId: string, subjectId: string) => {
+    try {
+      await deleteDoc(doc(db, `schools/${schoolId}/subjects`, subjectId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/subjects/${subjectId}`);
+    }
+  },
+
   // Performance Management (Grades and Attendance)
   saveGrades: async (schoolId: string, classId: string, subject: string, gradesData: any[]) => {
     try {
       const batch = writeBatch(db);
-      gradesData.forEach(grade => {
-        const docRef = doc(db, `schools/${schoolId}/students/${grade.studentId}/performance/${classId}_${subject}`);
-        batch.set(docRef, {
-          ...grade,
-          subject,
-          classId,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-      });
+      
+      if (subject === "BATCH_UPDATE") {
+        gradesData.forEach(grade => {
+          const docRef = doc(db, `schools/${schoolId}/students/${grade.studentId}/performance/${classId}_${grade.subject}`);
+          const { studentId, ...dataToSave } = grade;
+          batch.set(docRef, {
+            ...dataToSave,
+            classId,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        });
+      } else {
+        gradesData.forEach(grade => {
+          const docRef = doc(db, `schools/${schoolId}/students/${grade.studentId}/performance/${classId}_${subject}`);
+          batch.set(docRef, {
+            ...grade,
+            subject,
+            classId,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        });
+      }
+      
       await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/students/grades`);
@@ -252,6 +306,16 @@ export const firebaseService = {
       return studentsGrades;
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/performance`);
+    }
+  },
+
+  getStudentPerformance: async (schoolId: string, studentId: string) => {
+    try {
+      const perfQuery = query(collection(db, `schools/${schoolId}/students/${studentId}/performance`));
+      const perfSnapshot = await getDocs(perfQuery);
+      return perfSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/${studentId}/performance`);
     }
   },
 

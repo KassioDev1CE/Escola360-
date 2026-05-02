@@ -26,11 +26,12 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState<any>({});
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [studentPerformance, setStudentPerformance] = useState<any[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
 
   React.useEffect(() => {
     const unsubStudents = firebaseService.subscribeToStudents("cm_school_123", (allStudents) => {
-      // Filtra apenas os alunos deste responsável
       const matches = allStudents.filter((s: any) => s.guardianCpf === user?.cpf);
       setStudents(matches);
       if (matches.length > 0 && !selectedStudent) {
@@ -43,15 +44,27 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
       setSchedules(allSchedules);
     });
 
+    const unsubSubjects = firebaseService.subscribeToSubjects("cm_school_123", (allSubjects) => {
+      setSubjects(allSubjects);
+    });
+
     return () => {
       unsubStudents();
       unsubSchedules();
+      unsubSubjects();
     };
   }, [user?.cpf]);
 
   React.useEffect(() => {
-    if (selectedStudent && schedules) {
-        updateTodaySchedule(selectedStudent.classId, schedules);
+    if (selectedStudent) {
+        if (schedules) updateTodaySchedule(selectedStudent.classId, schedules);
+        
+        // Fetch performance for selected student
+        const fetchPerformance = async () => {
+            const perf = await firebaseService.getStudentPerformance("cm_school_123", selectedStudent.id);
+            setStudentPerformance(perf || []);
+        };
+        fetchPerformance();
     }
   }, [selectedStudent, schedules]);
 
@@ -209,14 +222,28 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
                     <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">Ver Detalhes</button>
                  </div>
                  
-                 <div className="space-y-8">
-                    <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                        <BookOpen className="w-6 h-6 text-slate-300" />
+                 <div className="space-y-6">
+                    {subjects.length > 0 ? subjects.map((sub) => {
+                      const perf = studentPerformance.find(p => p.subject === sub.name);
+                      const grade = parseFloat(perf?.b2_grade || "0");
+                      return (
+                        <GradeRow key={sub.id} Subject={sub.name} Grade={grade} />
+                      );
+                    }) : (
+                      <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                          <BookOpen className="w-6 h-6 text-slate-300" />
+                        </div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nenhuma disciplina configurada</p>
                       </div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nenhum dado de rendimento disponível</p>
-                    </div>
-                 </div>
+                    )}
+                    
+                    {subjects.length > 0 && studentPerformance.length === 0 && (
+                      <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-center">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase">Notas em processamento pedagógico</p>
+                      </div>
+                    )}
+                  </div>
               </div>
 
               <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-10 rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden group">
