@@ -494,6 +494,48 @@ export const firebaseService = {
     }
   },
 
+  // Schools Management (Global)
+  subscribeToSchools: (callback: (schools: any[]) => void) => {
+    const q = query(collection(db, 'schools'), orderBy('name'));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'schools'));
+  },
+
+  addSchool: async (schoolData: any) => {
+    try {
+      const docRef = await addDoc(collection(db, 'schools'), {
+        ...schoolData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'schools');
+    }
+  },
+
+  updateSchool: async (schoolId: string, schoolData: any) => {
+    try {
+      const docRef = doc(db, 'schools', schoolId);
+      await updateDoc(docRef, {
+        ...schoolData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}`);
+    }
+  },
+
+  deleteSchool: async (schoolId: string) => {
+    try {
+      const docRef = doc(db, 'schools', schoolId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}`);
+    }
+  },
+
   // User Profiles Management
   subscribeToUserProfiles: (schoolId: string, callback: (profiles: any[]) => void) => {
     const q = query(collection(db, `schools/${schoolId}/profiles`));

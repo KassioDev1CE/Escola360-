@@ -59,6 +59,13 @@ service cloud.firestore {
         && data.role in ['admin', 'teacher', 'parent'];
     }
 
+    function isValidSchool(data) {
+      return data.keys().hasAll(['name', 'cnpj', 'inep'])
+        && data.name is string && data.name.size() > 0
+        && data.cnpj is string && data.cnpj.size() >= 14
+        && data.inep is string && data.inep.size() > 0;
+    }
+
     // --- Matches ---
 
     match /users/{userId} {
@@ -69,8 +76,11 @@ service cloud.firestore {
     }
 
     match /schools/{schoolId} {
-      allow get: if isSchoolMember(schoolId);
-      allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      allow list: if isAdminFromUserDoc();
+      allow create: if isAdminFromUserDoc() && isValidSchool(incoming());
+      allow get: if isSchoolMember(schoolId) || isAdminFromUserDoc();
+      allow update: if isAdminFromUserDoc() && isValidSchool(incoming());
+      allow delete: if isAdminFromUserDoc();
       
       // Subjects
       match /subjects/{subjectId} {

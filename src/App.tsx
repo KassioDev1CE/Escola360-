@@ -15,7 +15,8 @@ import {
   ArrowRightLeft,
   ChevronDown,
   GraduationCap,
-  ClipboardCheck
+  ClipboardCheck,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, type ReactNode, useEffect, useRef } from 'react';
@@ -32,13 +33,14 @@ import SettingsView from './features/settings/Settings';
 import Transfers from './features/academic/Transfers';
 import Grades from './features/academic/Grades';
 import UserManagement from './features/admin/UserManagement';
+import SchoolManagement from './features/admin/SchoolManagement';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
 import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades' | 'users';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades' | 'users' | 'schools';
 
 export default function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -93,6 +95,7 @@ export default function App() {
       case 'transfers': return <Transfers />;
       case 'grades': return <Grades />;
       case 'users': return <UserManagement />;
+      case 'schools': return <SchoolManagement />;
       default: return <Dashboard />;
     }
   };
@@ -155,15 +158,24 @@ export default function App() {
               <NavDropdown 
                 label="Pedagógico"
                 icon={<ClipboardCheck className="w-4 h-4" />}
-                active={['grades', 'documents', 'users'].includes(activeModule)}
+                active={['grades', 'documents'].includes(activeModule)}
                 items={[
                   { label: 'Notas e Frequência', icon: <GraduationCap className="w-4 h-4" />, onClick: () => setActiveModule('grades'), active: activeModule === 'grades' },
                   { label: 'Documentos', icon: <FileText className="w-4 h-4" />, onClick: () => setActiveModule('documents'), active: activeModule === 'documents' },
-                  ...(profile?.role === 'admin' || profile?.role === 'director' ? [
-                    { label: 'Usuários', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('users'), active: activeModule === 'users' }
-                  ] : []),
                 ]}
               />
+
+              {(profile?.role === 'admin' || profile?.role === 'director') && (
+                <NavDropdown 
+                  label="Administrativo"
+                  icon={<Shield className="w-4 h-4" />}
+                  active={['users', 'schools'].includes(activeModule)}
+                  items={[
+                    { label: 'Gestão de Usuários', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('users'), active: activeModule === 'users' },
+                    { label: 'Instituições', icon: <SchoolIcon className="w-4 h-4" />, onClick: () => setActiveModule('schools'), active: activeModule === 'schools' },
+                  ]}
+                />
+              )}
 
               <NavButton 
                 active={activeModule === 'finance'} 
