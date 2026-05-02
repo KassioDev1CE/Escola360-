@@ -50,6 +50,22 @@ export default function UserManagement() {
   const { profile } = useAuth();
   const schoolId = profile?.schoolId || "cm_school_123";
   const [users, setUsers] = useState<UserProfile[]>([]);
+  
+  // Security Check
+  if (profile && profile.role !== 'admin' && profile.role !== 'director') {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border border-slate-200">
+        <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-6">
+          <Shield className="w-10 h-10" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
+        <p className="text-slate-500 mt-2 text-center max-w-sm">
+          Apenas administradores e diretores possuem permissão para gerenciar os usuários do sistema.
+        </p>
+      </div>
+    );
+  }
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);

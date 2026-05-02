@@ -159,7 +159,9 @@ export default function App() {
                 items={[
                   { label: 'Notas e Frequência', icon: <GraduationCap className="w-4 h-4" />, onClick: () => setActiveModule('grades'), active: activeModule === 'grades' },
                   { label: 'Documentos', icon: <FileText className="w-4 h-4" />, onClick: () => setActiveModule('documents'), active: activeModule === 'documents' },
-                  { label: 'Usuários', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('users'), active: activeModule === 'users' },
+                  ...(profile?.role === 'admin' || profile?.role === 'director' ? [
+                    { label: 'Usuários', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('users'), active: activeModule === 'users' }
+                  ] : []),
                 ]}
               />
 
