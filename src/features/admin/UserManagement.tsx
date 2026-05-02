@@ -48,8 +48,10 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function UserManagement() {
   const { profile } = useAuth();
-  const schoolId = profile?.schoolId || "cm_school_123";
+  const initialSchoolId = profile?.schoolId || "cm_school_123";
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [schools, setSchools] = useState<any[]>([]);
+  const [filterSchoolId, setFilterSchoolId] = useState(initialSchoolId);
   
   // Security Check
   if (profile && profile.role !== 'admin' && profile.role !== 'director') {
@@ -78,30 +80,44 @@ export default function UserManagement() {
     email: '',
     birthDate: '',
     role: 'secretary',
-    schoolId: schoolId
+    schoolId: filterSchoolId
   });
 
   useEffect(() => {
-    const unsub = firebaseService.subscribeToUserProfiles(schoolId, (data) => {
+    setLoading(true);
+    const unsubUsers = firebaseService.subscribeToUserProfiles(filterSchoolId, (data) => {
       setUsers(data as UserProfile[]);
       setLoading(false);
     });
-    return () => unsub();
-  }, [schoolId]);
+
+    const unsubSchools = firebaseService.subscribeToSchools((data) => {
+      setSchools(data);
+    });
+
+    return () => {
+      unsubUsers();
+      unsubSchools();
+    };
+  }, [filterSchoolId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.schoolId) {
+      setMessage({ type: 'error', text: 'Selecione uma escola.' });
+      return;
+    }
+    const targetSchoolId = formData.schoolId;
     try {
       if (editingUser?.id) {
-        await firebaseService.updateUserProfile(schoolId, editingUser.id, formData);
+        await firebaseService.updateUserProfile(targetSchoolId, editingUser.id, formData);
         setMessage({ type: 'success', text: 'Usuário atualizado com sucesso!' });
       } else {
-        await firebaseService.addUserProfile(schoolId, formData);
+        await firebaseService.addUserProfile(targetSchoolId, formData);
         setMessage({ type: 'success', text: 'Usuário cadastrado com sucesso!' });
       }
       setIsModalOpen(false);
       setEditingUser(null);
-      setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId });
+      setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId: targetSchoolId });
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       console.error(err);
@@ -118,7 +134,7 @@ export default function UserManagement() {
   const handleDelete = async (id: string) => {
     if (confirm("Deseja realmente remover este usuário? Ele perderá acesso ao sistema.")) {
       try {
-        await firebaseService.deleteUserProfile(schoolId, id);
+        await firebaseService.deleteUserProfile(filterSchoolId, id);
         setMessage({ type: 'success', text: 'Usuário removido.' });
         setTimeout(() => setMessage(null), 3000);
       } catch (err) {
@@ -148,7 +164,7 @@ export default function UserManagement() {
         <button 
           onClick={() => {
             setEditingUser(null);
-            setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId });
+            setFormData({ cpf: '', name: '', email: '', birthDate: '', role: 'secretary', schoolId: filterSchoolId });
             setIsModalOpen(true);
           }}
           className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
@@ -176,8 +192,8 @@ export default function UserManagement() {
 
       {/* Main Content */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-          <div className="relative max-w-md">
+        <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full max-w-sm">
             <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
@@ -186,6 +202,19 @@ export default function UserManagement() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
             />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+             <span className="text-xs font-bold text-slate-400 uppercase whitespace-nowrap">Escola:</span>
+             <select 
+               value={filterSchoolId}
+               onChange={(e) => setFilterSchoolId(e.target.value)}
+               className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 outline-none w-full md:w-64"
+             >
+               {schools.map(school => (
+                 <option key={school.id} value={school.id}>{school.name}</option>
+               ))}
+             </select>
           </div>
         </div>
 
@@ -247,6 +276,9 @@ export default function UserManagement() {
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border uppercase ${ROLE_COLORS[user.role]}`}>
                       {ROLES_MAP[user.role] || user.role}
                     </span>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {schools.find(s => s.id === user.schoolId)?.name || 'Escola não identificada'}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
@@ -392,12 +424,17 @@ export default function UserManagement() {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Escola Vinculada</label>
                     <div className="relative">
                       <Building2 className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
-                        type="text" 
-                        readOnly
-                        value={profile?.schoolName || "Minha Escola"}
-                        className="w-full bg-slate-100 border-none rounded-xl pl-12 pr-4 py-3 text-sm font-bold text-slate-400 outline-none cursor-not-allowed"
-                      />
+                      <select 
+                        required
+                        value={formData.schoolId}
+                        onChange={(e) => setFormData({...formData, schoolId: e.target.value})}
+                        className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                      >
+                        <option value="">Selecione uma instituição</option>
+                        {schools.map(school => (
+                          <option key={school.id} value={school.id}>{school.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
