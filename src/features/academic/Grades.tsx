@@ -15,7 +15,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { firebaseService } from '../../lib/firebaseService';
 
 export default function Grades() {
-  const schoolId = "cm_school_123";
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
   const [activeTab, setActiveTab] = useState<'entry' | 'map'>('entry');
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);

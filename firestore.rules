@@ -72,6 +72,12 @@ service cloud.firestore {
       allow get: if isSchoolMember(schoolId);
       allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
       
+      // Subjects
+      match /subjects/{subjectId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
+
       // Students
       match /students/{studentId} {
         allow read: if isSchoolMember(schoolId);

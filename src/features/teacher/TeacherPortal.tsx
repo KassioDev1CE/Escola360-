@@ -35,11 +35,12 @@ export default function TeacherPortal({ onLogout, user }: TeacherPortalProps) {
   const [classes, setClasses] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubClasses = firebaseService.subscribeToClasses("cm_school_123", (data) => {
+    const schoolId = user?.schoolId || "cm_school_123";
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, (data) => {
       setClasses(data);
     });
 
-    const unsubSchedules = firebaseService.subscribeToSchedules("cm_school_123", (data) => {
+    const unsubSchedules = firebaseService.subscribeToSchedules(schoolId, (data) => {
       setAllSchedules(data);
     });
 
@@ -164,7 +165,7 @@ export default function TeacherPortal({ onLogout, user }: TeacherPortalProps) {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <TeacherDashboard schedules={allSchedules} classes={classes} />}
-              {activeTab === 'attendance' && <AttendanceView classes={classes} />}
+              {activeTab === 'attendance' && <AttendanceView classes={classes} schoolId={user?.schoolId} />}
               {activeTab === 'content' && <LessonPlanView classes={classes} />}
               {activeTab === 'grades' && (
                 <div className="bg-white p-20 rounded-3xl border border-slate-200 text-center shadow-sm">
@@ -323,14 +324,14 @@ function ScheduleItem({ time, title, classId, status }: any) {
   );
 }
 
-function AttendanceView({ classes }: any) {
+function AttendanceView({ classes, schoolId }: any) {
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
 
   useEffect(() => {
     if (selectedClass) {
-        const unsub = firebaseService.subscribeToStudents("cm_school_123", (data) => {
+        const unsub = firebaseService.subscribeToStudents(schoolId || "cm_school_123", (data) => {
             const filtered = data.filter((s: any) => s.classId === selectedClass);
             setStudents(filtered);
         });
@@ -338,7 +339,7 @@ function AttendanceView({ classes }: any) {
     } else {
         setStudents([]);
     }
-  }, [selectedClass]);
+  }, [selectedClass, schoolId]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

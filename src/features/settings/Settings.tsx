@@ -97,8 +97,11 @@ export default function Settings() {
     try {
       await firebaseService.addSubject(schoolId, { name: newSubject.trim() });
       setNewSubject("");
+      setMessage({ type: 'success', text: 'Disciplina adicionada ao currículo!' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (e) {
       console.error(e);
+      setMessage({ type: 'error', text: 'Erro ao adicionar disciplina.' });
     }
   };
 
@@ -106,8 +109,11 @@ export default function Settings() {
     if (confirm("Tem certeza que deseja remover esta disciplina?")) {
       try {
         await firebaseService.deleteSubject(schoolId, id);
+        setMessage({ type: 'success', text: 'Disciplina removida.' });
+        setTimeout(() => setMessage(null), 3000);
       } catch (e) {
         console.error(e);
+        setMessage({ type: 'error', text: 'Erro ao remover disciplina.' });
       }
     }
   };

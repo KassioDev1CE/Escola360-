@@ -31,7 +31,8 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
 
   React.useEffect(() => {
-    const unsubStudents = firebaseService.subscribeToStudents("cm_school_123", (allStudents) => {
+    const schoolId = user?.schoolId || "cm_school_123";
+    const unsubStudents = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
       const matches = allStudents.filter((s: any) => s.guardianCpf === user?.cpf);
       setStudents(matches);
       if (matches.length > 0 && !selectedStudent) {
@@ -40,11 +41,11 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
       setLoading(false);
     });
 
-    const unsubSchedules = firebaseService.subscribeToSchedules("cm_school_123", (allSchedules) => {
+    const unsubSchedules = firebaseService.subscribeToSchedules(schoolId, (allSchedules) => {
       setSchedules(allSchedules);
     });
 
-    const unsubSubjects = firebaseService.subscribeToSubjects("cm_school_123", (allSubjects) => {
+    const unsubSubjects = firebaseService.subscribeToSubjects(schoolId, (allSubjects) => {
       setSubjects(allSubjects);
     });
 
@@ -57,11 +58,12 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
 
   React.useEffect(() => {
     if (selectedStudent) {
+        const schoolId = user?.schoolId || "cm_school_123";
         if (schedules) updateTodaySchedule(selectedStudent.classId, schedules);
         
         // Fetch performance for selected student
         const fetchPerformance = async () => {
-            const perf = await firebaseService.getStudentPerformance("cm_school_123", selectedStudent.id);
+            const perf = await firebaseService.getStudentPerformance(schoolId, selectedStudent.id);
             setStudentPerformance(perf || []);
         };
         fetchPerformance();
