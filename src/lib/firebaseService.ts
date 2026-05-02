@@ -263,5 +263,31 @@ export const firebaseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/stats`);
     }
+  },
+
+  // School Settings
+  getSchoolConfig: async (schoolId: string) => {
+    try {
+      const docRef = doc(db, 'schools', schoolId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+      return null;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}`);
+    }
+  },
+
+  updateSchoolConfig: async (schoolId: string, configData: any) => {
+    try {
+      const docRef = doc(db, 'schools', schoolId);
+      await setDoc(docRef, {
+        ...configData,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}`);
+    }
   }
 };

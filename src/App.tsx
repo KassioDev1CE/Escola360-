@@ -244,7 +244,7 @@ export default function App() {
             <StatusIndicator dotColor="bg-emerald-500" label="Servidor: Online" />
             <StatusIndicator dotColor="bg-blue-400" label="Sincronização: Tempo Real" />
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">Escola<span className="text-blue-600">360</span> v2.8.0 • 2024 Built with Tech Solutions</p>
+          <p className="text-[10px] text-slate-400 font-medium">Escola<span className="text-blue-600">360</span> v2.8.0 • {new Date().getFullYear()} Built with Tech Solutions</p>
         </div>
       </footer>
     </div>

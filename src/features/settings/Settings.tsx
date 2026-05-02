@@ -9,8 +9,11 @@ import {
   Save, 
   Image as ImageIcon,
   Calendar as CalendarIcon,
-  ShieldAlert
+  ShieldAlert,
+  Loader2
 } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 interface SchoolConfig {
   name: string;
@@ -24,6 +27,9 @@ interface SchoolConfig {
 }
 
 export default function Settings() {
+  const { profile } = useAuth();
+  const schoolId = profile?.schoolId || "cm_school_123";
+
   const [config, setConfig] = useState<SchoolConfig>({
     name: "Colégio Santa Maria",
     cnpj: "12.345.678/0001-90",
@@ -31,19 +37,28 @@ export default function Settings() {
     email: "secretaria@santamaria.edu.br",
     phone: "(11) 4002-8922",
     logoLetter: "S",
-    academicYear: 2024,
+    academicYear: 2026,
     directorName: "Prof. Dr. Roberto Silva"
   });
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   useEffect(() => {
-    // In a real app, fetch from /api/school-config
-    const savedConfig = localStorage.getItem('school_config');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
-    }
-  }, []);
+    const fetchConfig = async () => {
+      try {
+        const data = await firebaseService.getSchoolConfig(schoolId);
+        if (data) {
+          setConfig(prev => ({ ...prev, ...data }));
+        }
+      } catch (error) {
+        console.error("Error fetching config:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfig();
+  }, [schoolId]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,16 +66,26 @@ export default function Settings() {
     setMessage(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await firebaseService.updateSchoolConfig(schoolId, config);
+      setMessage({ type: 'success', text: 'Configurações salvas no banco de dados com sucesso!' });
+      // Keep localStorage for backward compatibility or immediate UI updates elsewhere if needed
       localStorage.setItem('school_config', JSON.stringify(config));
-      setMessage({ type: 'success', text: 'Configurações salvas com sucesso!' });
     } catch (error) {
-      setMessage({ type: 'error', text: 'Falha ao salvar configurações.' });
+      console.error("Error saving config:", error);
+      setMessage({ type: 'error', text: 'Falha ao salvar configurações no servidor.' });
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-slate-500 font-medium">Carregando configurações...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

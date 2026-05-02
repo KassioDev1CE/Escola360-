@@ -19,6 +19,7 @@ interface SchoolInfo {
   email: string;
   phone: string;
   logoLetter: string;
+  academicYear?: number;
 }
 
 interface ClassData {
@@ -39,18 +40,33 @@ export default function Documents() {
   const [school, setSchool] = useState<SchoolInfo>({
     name: "Colégio Santa Maria",
     cnpj: "12.345.678/0001-90",
-    address: "Rua das Flores, 123",
+    address: "Rua Das Flores, 123",
     email: "secretaria@escola.edu.br",
     phone: "(11) 4002-8922",
-    logoLetter: "S"
+    logoLetter: "S",
+    academicYear: 2024
   });
 
   useEffect(() => {
-    // Check for custom config in localStorage
-    const savedConfig = localStorage.getItem('school_config');
-    if (savedConfig) {
-      setSchool(JSON.parse(savedConfig));
-    }
+    // 1. Fetch from Firestore (Source of Truth)
+    const fetchConfig = async () => {
+      try {
+        const data = await firebaseService.getSchoolConfig(schoolId);
+        if (data) {
+          setSchool(prev => ({ ...prev, ...data }));
+        } else {
+          // Fallback to localStorage if no Firestore data yet
+          const savedConfig = localStorage.getItem('school_config');
+          if (savedConfig) {
+            setSchool(JSON.parse(savedConfig));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching documents config:", error);
+      }
+    };
+
+    fetchConfig();
 
     const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
@@ -221,7 +237,7 @@ export default function Documents() {
                             <p className="text-xs font-bold text-slate-600">
                               Turma: {classes.find(c => c.id === selectedStudent.classId)?.name || 'Não alocada'}
                             </p>
-                            <p className="text-[10px] text-slate-400">Ano Letivo 2024</p>
+                            <p className="text-[10px] text-slate-400">Ano Letivo {school.academicYear || 2024}</p>
                           </div>
                        </div>
                     </div>
@@ -298,7 +314,7 @@ export default function Documents() {
                         <div className="border border-slate-900 p-2"><strong>Aluno:</strong> {selectedStudent.name}</div>
                         <div className="border border-slate-900 p-2"><strong>RA:</strong> {selectedStudent.ra}</div>
                         <div className="border border-slate-900 p-2"><strong>Turma:</strong> {classes.find(c => c.id === selectedStudent.classId)?.name || '-'}</div>
-                        <div className="border border-slate-900 p-2"><strong>Ano:</strong> 2024</div>
+                        <div className="border border-slate-900 p-2"><strong>Ano:</strong> {school.academicYear || 2024}</div>
                       </div>
                       
                       <table className="w-full border-collapse border border-slate-900 text-xs text-center mt-4">
@@ -349,7 +365,7 @@ export default function Documents() {
                     </div>
                   ) : (
                     <div className="space-y-6 text-sm leading-relaxed text-justify mt-10">
-                      <p>Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de 2024.</p>
+                      <p>Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de {school.academicYear || 2024}.</p>
                       <p>O(A) referido(a) discente frequenta as aulas regularmente, cumprindo com as exigências pedagógicas e regimentais da escola.</p>
                       <p>A presente declaração é a expressão da verdade e tem validade de 30 (trinta) dias a contar da data de sua emissão.</p>
                       <p className="mt-10 text-right">{school.address.split(',')[1].split('-')[1]?.trim() || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>

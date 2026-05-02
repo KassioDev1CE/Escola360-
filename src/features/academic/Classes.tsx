@@ -38,7 +38,7 @@ export default function Classes() {
   
   const [formData, setFormData] = useState({ 
     name: '', 
-    year: 2024, 
+    year: new Date().getFullYear(), 
     room: '', 
     shift: '', 
     startTime: '', 
@@ -152,7 +152,7 @@ export default function Classes() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', year: 2024, room: '', shift: '', startTime: '', endTime: '', days: [] });
+    setFormData({ name: '', year: new Date().getFullYear(), room: '', shift: '', startTime: '', endTime: '', days: [] });
   };
 
   const toggleDay = (day: string) => {
