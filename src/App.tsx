@@ -16,7 +16,8 @@ import {
   ChevronDown,
   GraduationCap,
   ClipboardCheck,
-  Shield
+  Shield,
+  FileBarChart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, type ReactNode, useEffect, useRef } from 'react';
@@ -34,13 +35,14 @@ import Transfers from './features/academic/Transfers';
 import Grades from './features/academic/Grades';
 import UserManagement from './features/admin/UserManagement';
 import SchoolManagement from './features/admin/SchoolManagement';
+import Reports from './features/reports/Reports';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
 import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades' | 'users' | 'schools';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades' | 'users' | 'schools' | 'reports';
 
 export default function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -96,6 +98,7 @@ export default function App() {
       case 'grades': return <Grades />;
       case 'users': return <UserManagement />;
       case 'schools': return <SchoolManagement />;
+      case 'reports': return <Reports />;
       default: return <Dashboard />;
     }
   };
@@ -164,6 +167,15 @@ export default function App() {
                   { label: 'Documentos', icon: <FileText className="w-4 h-4" />, onClick: () => setActiveModule('documents'), active: activeModule === 'documents' },
                 ]}
               />
+
+              {(profile?.role === 'admin' || profile?.role === 'director' || profile?.role === 'secretary') && (
+                <NavButton 
+                  active={activeModule === 'reports'} 
+                  onClick={() => setActiveModule('reports')}
+                  icon={<FileBarChart className="w-4 h-4" />}
+                  label="Relatórios"
+                />
+              )}
 
               {(profile?.role === 'admin' || profile?.role === 'director') && (
                 <NavDropdown 
