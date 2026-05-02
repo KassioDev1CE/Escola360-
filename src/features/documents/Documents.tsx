@@ -501,21 +501,42 @@ export default function Documents() {
 }
 
 function DocCard({ title, desc, onClick, loading, icon, colorClass = 'blue' }: { title: string, desc: string, onClick: () => void, loading: boolean, icon?: React.ReactNode, colorClass?: 'blue' | 'amber' }) {
+  const colors = {
+    blue: {
+      border: 'hover:border-blue-200',
+      shadow: 'hover:shadow-blue-500/5',
+      text: 'text-blue-600',
+      bgHover: 'group-hover:bg-blue-600',
+      textHover: 'group-hover:text-blue-400',
+      textActive: 'text-blue-600'
+    },
+    amber: {
+      border: 'hover:border-amber-200',
+      shadow: 'hover:shadow-amber-500/5',
+      text: 'text-amber-600',
+      bgHover: 'group-hover:bg-amber-600',
+      textHover: 'group-hover:text-amber-400',
+      textActive: 'text-amber-600'
+    }
+  };
+
+  const activeColor = colors[colorClass];
+
   return (
     <div 
       onClick={onClick}
-      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-${colorClass}-200 hover:shadow-xl hover:shadow-${colorClass}-500/5 transition-all group cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white ${activeColor.border} hover:shadow-xl ${activeColor.shadow} transition-all group cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
     >
       <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 bg-white rounded-xl shadow-sm text-${colorClass}-600 group-hover:bg-${colorClass}-600 group-hover:text-white transition-all`}>
+        <div className={`p-3 bg-white rounded-xl shadow-sm ${activeColor.text} ${activeColor.bgHover} group-hover:text-white transition-all`}>
           {icon || <FileText className="w-6 h-6" />}
         </div>
-        <Printer className={`w-4 h-4 text-slate-300 group-hover:text-${colorClass}-400`} />
+        <Printer className={`w-4 h-4 text-slate-300 ${activeColor.textHover}`} />
       </div>
       <h4 className="font-bold text-slate-800 text-sm mb-1">{title}</h4>
       <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{desc}</p>
       
-      <div className={`mt-4 flex items-center gap-2 text-[10px] font-bold text-${colorClass}-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity`}>
+      <div className={`mt-4 flex items-center gap-2 text-[10px] font-bold ${activeColor.textActive} uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity`}>
         <span>{loading ? 'Processando...' : 'Gerar e Visualizar'}</span>
       </div>
     </div>

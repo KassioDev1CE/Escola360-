@@ -78,6 +78,19 @@ service cloud.firestore {
         allow create: if isSchoolMember(schoolId) && isValidStudent(incoming());
         allow update: if isSchoolMember(schoolId) && isValidStudent(incoming());
         allow delete: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+
+        // Occurrences
+        match /occurrences/{occurrenceId} {
+          allow read: if isSchoolMember(schoolId);
+          allow create: if isSchoolMember(schoolId);
+        }
+      }
+
+      // Transfers
+      match /transfers/{transferId} {
+        allow read: if isSchoolMember(schoolId);
+        allow create: if isSchoolMember(schoolId);
+        allow update: if isAdminFromUserDoc() && isSchoolMember(schoolId);
       }
 
       // Classes
