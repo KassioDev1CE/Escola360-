@@ -77,6 +77,12 @@ service cloud.firestore {
         allow read: if isSchoolMember(schoolId);
         allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
       }
+      
+      // Profiles
+      match /profiles/{profileId} {
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isAdminFromUserDoc() && isSchoolMember(schoolId);
+      }
 
       // Students
       match /students/{studentId} {

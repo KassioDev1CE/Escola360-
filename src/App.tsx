@@ -31,13 +31,14 @@ import Documents from './features/documents/Documents';
 import SettingsView from './features/settings/Settings';
 import Transfers from './features/academic/Transfers';
 import Grades from './features/academic/Grades';
+import UserManagement from './features/admin/UserManagement';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
 import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers' | 'grades' | 'users';
 
 export default function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -91,6 +92,7 @@ export default function App() {
       case 'settings': return <SettingsView />;
       case 'transfers': return <Transfers />;
       case 'grades': return <Grades />;
+      case 'users': return <UserManagement />;
       default: return <Dashboard />;
     }
   };
@@ -153,10 +155,11 @@ export default function App() {
               <NavDropdown 
                 label="Pedagógico"
                 icon={<ClipboardCheck className="w-4 h-4" />}
-                active={['grades', 'documents'].includes(activeModule)}
+                active={['grades', 'documents', 'users'].includes(activeModule)}
                 items={[
                   { label: 'Notas e Frequência', icon: <GraduationCap className="w-4 h-4" />, onClick: () => setActiveModule('grades'), active: activeModule === 'grades' },
                   { label: 'Documentos', icon: <FileText className="w-4 h-4" />, onClick: () => setActiveModule('documents'), active: activeModule === 'documents' },
+                  { label: 'Usuários', icon: <Users className="w-4 h-4" />, onClick: () => setActiveModule('users'), active: activeModule === 'users' },
                 ]}
               />
 

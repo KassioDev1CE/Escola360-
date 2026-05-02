@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { firebaseService } from '../../lib/firebaseService';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function Grades() {
   const { profile } = useAuth();
@@ -40,9 +41,10 @@ export default function Grades() {
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
     const unsubSubjects = firebaseService.subscribeToSubjects(schoolId, (data) => {
       setSubjects(data);
-      if (data.length === 0) {
+      if (data.length === 0 && !loading) {
         const defaultSubjects = ['Português', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes', 'Educação Física', 'Inglês'];
-        defaultSubjects.forEach(s => firebaseService.addSubject(schoolId, { name: s }));
+        Promise.all(defaultSubjects.map(s => firebaseService.addSubject(schoolId, { name: s })))
+          .catch(err => console.error("Erro ao criar disciplinas padrão:", err));
       }
     });
     return () => {

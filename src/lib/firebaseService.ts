@@ -492,5 +492,47 @@ export const firebaseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/transfers`);
     }
+  },
+
+  // User Profiles Management
+  subscribeToUserProfiles: (schoolId: string, callback: (profiles: any[]) => void) => {
+    const q = query(collection(db, `schools/${schoolId}/profiles`));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `schools/${schoolId}/profiles`));
+  },
+
+  addUserProfile: async (schoolId: string, profileData: any) => {
+    try {
+      await addDoc(collection(db, `schools/${schoolId}/profiles`), {
+        ...profileData,
+        schoolId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/profiles`);
+    }
+  },
+
+  updateUserProfile: async (schoolId: string, profileId: string, profileData: any) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/profiles`, profileId);
+      await updateDoc(docRef, {
+        ...profileData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}/profiles/${profileId}`);
+    }
+  },
+
+  deleteUserProfile: async (schoolId: string, profileId: string) => {
+    try {
+      const docRef = doc(db, `schools/${schoolId}/profiles`, profileId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `schools/${schoolId}/profiles/${profileId}`);
+    }
   }
 };

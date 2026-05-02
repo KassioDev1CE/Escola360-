@@ -82,15 +82,15 @@ export default function Documents() {
       }
     });
     
-    firebaseService.getSubjects(schoolId).then(data => {
+    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
+    const unsubSubjects = firebaseService.subscribeToSubjects(schoolId, (data) => {
       setSubjects(data || []);
     });
-
-    const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
 
     return () => {
       unsubStudents();
       unsubClasses();
+      unsubSubjects();
     };
   }, [schoolId]);
 
