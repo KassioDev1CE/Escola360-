@@ -11,7 +11,8 @@ import {
   FileText,
   Home,
   Briefcase,
-  Loader2
+  Loader2,
+  ArrowRightLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, type ReactNode, useEffect } from 'react';
@@ -25,13 +26,14 @@ import Teachers from './features/academic/Teachers';
 import Finance from './features/finance/Finance';
 import Documents from './features/documents/Documents';
 import SettingsView from './features/settings/Settings';
+import Transfers from './features/academic/Transfers';
 import Portal from './features/portal/Portal';
 import TeacherPortal from './features/teacher/TeacherPortal';
 import ParentPortal from './features/parent/ParentPortal';
 import Login from './features/auth/Login';
 
 type UserRole = 'portal' | 'admin' | 'teacher' | 'parent';
-type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings';
+type ActiveModule = 'dashboard' | 'students' | 'teachers' | 'classes' | 'finance' | 'documents' | 'settings' | 'transfers';
 
 export default function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -83,6 +85,7 @@ export default function App() {
       case 'finance': return <Finance />;
       case 'documents': return <Documents />;
       case 'settings': return <SettingsView />;
+      case 'transfers': return <Transfers />;
       default: return <Dashboard />;
     }
   };
@@ -158,6 +161,12 @@ export default function App() {
                 onClick={() => setActiveModule('documents')}
                 icon={<FileText className="w-4 h-4" />}
                 label="Documentos"
+              />
+              <NavButton 
+                active={activeModule === 'transfers'} 
+                onClick={() => setActiveModule('transfers')}
+                icon={<ArrowRightLeft className="w-4 h-4" />}
+                label="Transf."
               />
             </nav>
           </div>

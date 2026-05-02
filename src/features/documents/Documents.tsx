@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Printer, User, Search, Download, ShieldCheck, Mail, MapPin } from 'lucide-react';
+import { FileText, Printer, User, Search, Download, ShieldCheck, Mail, MapPin, ArrowRightLeft } from 'lucide-react';
 import { firebaseService } from '../../lib/firebaseService';
 import { useAuth } from '../../lib/AuthContext';
 
@@ -36,6 +36,9 @@ export default function Documents() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
+  const [occurrences, setOccurrences] = useState<any[]>([]);
+  const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
+  const [transferReason, setTransferReason] = useState('');
 
   const [school, setSchool] = useState<SchoolInfo>({
     name: "Colégio Santa Maria",
@@ -76,6 +79,22 @@ export default function Documents() {
       unsubClasses();
     };
   }, [schoolId]);
+
+  useEffect(() => {
+    if (selectedStudentId) {
+      const fetchOccurrences = async () => {
+        try {
+          const data = await firebaseService.getOccurrences(schoolId, selectedStudentId);
+          setOccurrences(data || []);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchOccurrences();
+    } else {
+      setOccurrences([]);
+    }
+  }, [selectedStudentId, schoolId]);
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.ra.includes(searchTerm);
@@ -261,11 +280,14 @@ export default function Documents() {
                         loading={isGenerating === 'ficha'}
                         onClick={() => handlePrint('ficha')}
                       />
-                      <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center group cursor-not-allowed">
-                         <Download className="w-6 h-6 text-slate-300 mb-2 group-hover:text-slate-400 transition-colors" />
-                         <p className="text-xs font-bold text-slate-400">Transferência Escolar</p>
-                         <p className="text-[10px] text-slate-300">Aguardando aprovação diretoria</p>
-                      </div>
+                      <DocCard 
+                        title="Transferência Escolar" 
+                        desc="Solicitar transferência definitiva para outra instituição."
+                        loading={isGenerating === 'transfer'}
+                        onClick={() => setIsRequestingTransfer(true)}
+                        icon={<ArrowRightLeft className="w-6 h-6" />}
+                        colorClass="amber"
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -358,9 +380,24 @@ export default function Documents() {
                        
                        <div className="mt-10">
                          <h3 className="font-bold border-b border-slate-900 mb-2">Histórico de Ocorrências / Observações</h3>
-                         <div className="border border-slate-300 p-4 h-32 text-xs text-slate-600 bg-slate-50 italic">
-                           Nenhuma ocorrência disciplinar registrada até a presente data ({new Date().toLocaleDateString('pt-BR')}).
-                         </div>
+                         {occurrences.length === 0 ? (
+                           <div className="border border-slate-300 p-4 h-32 text-xs text-slate-600 bg-slate-50 italic">
+                             Nenhuma ocorrência disciplinar registrada até a presente data ({new Date().toLocaleDateString('pt-BR')}).
+                           </div>
+                         ) : (
+                           <div className="space-y-4">
+                             {occurrences.slice(0, 5).map(occ => (
+                               <div key={occ.id} className="text-xs border-b border-slate-100 pb-2">
+                                  <div className="flex justify-between font-bold mb-1">
+                                     <span>{occ.type} - {occ.severity === 'high' ? 'GRAVE' : occ.severity === 'medium' ? 'MÉDIA' : 'LEVE'}</span>
+                                     <span>{occ.createdAt?.toDate().toLocaleDateString('pt-BR')}</span>
+                                  </div>
+                                  <p>{occ.description}</p>
+                               </div>
+                             ))}
+                             {occurrences.length > 5 && <p className="text-[10px] text-slate-400 italic">Mais {occurrences.length - 5} registros não listados nesta via...</p>}
+                           </div>
+                         )}
                        </div>
                     </div>
                   ) : (
@@ -387,27 +424,99 @@ export default function Documents() {
         </div>,
         document.body
       )}
+
+      <AnimatePresence>
+        {isRequestingTransfer && selectedStudent && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+             <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsRequestingTransfer(false)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              />
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 20, opacity: 0 }}
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 space-y-6"
+              >
+                <div className="flex items-center gap-3 text-amber-600">
+                   <div className="p-3 bg-amber-50 rounded-xl">
+                      <ArrowRightLeft className="w-6 h-6" />
+                   </div>
+                   <div>
+                     <h3 className="font-bold text-slate-800">Solicitar Transferência</h3>
+                     <p className="text-xs text-slate-500">Fluxo de autorização administrativa</p>
+                   </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Aluno Alvo</p>
+                   <p className="text-sm font-bold text-slate-800">{selectedStudent.name}</p>
+                   <p className="text-[10px] text-slate-500">RA: {selectedStudent.ra}</p>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1">Motivo da Transferência</label>
+                   <textarea 
+                    value={transferReason}
+                    onChange={e => setTransferReason(e.target.value)}
+                    placeholder="Descreva o motivo (mudança de cidade, pedido dos pais, etc)..."
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 min-h-[100px]"
+                   />
+                </div>
+
+                <div className="flex gap-2">
+                   <button 
+                    onClick={() => setIsRequestingTransfer(false)}
+                    className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
+                   >
+                     Cancelar
+                   </button>
+                   <button 
+                    onClick={async () => {
+                      if (!transferReason) return alert("Por favor, informe o motivo.");
+                      try {
+                        await firebaseService.requestTransfer(schoolId, selectedStudent.id, selectedStudent.name, transferReason);
+                        alert("Solicitação enviada para análise da gestão!");
+                        setIsRequestingTransfer(false);
+                        setTransferReason('');
+                      } catch (err) {
+                        console.error(err);
+                        alert("Erro ao enviar solicitação.");
+                      }
+                    }}
+                    className="flex-1 py-3 px-4 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-500/20"
+                   >
+                     Enviar Pedido
+                   </button>
+                </div>
+              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function DocCard({ title, desc, onClick, loading }: { title: string, desc: string, onClick: () => void, loading: boolean }) {
+function DocCard({ title, desc, onClick, loading, icon, colorClass = 'blue' }: { title: string, desc: string, onClick: () => void, loading: boolean, icon?: React.ReactNode, colorClass?: 'blue' | 'amber' }) {
   return (
     <div 
       onClick={onClick}
-      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all group cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-${colorClass}-200 hover:shadow-xl hover:shadow-${colorClass}-500/5 transition-all group cursor-pointer active:scale-95 ${loading ? 'opacity-50 pointer-events-none' : ''}`}
     >
       <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-white rounded-xl shadow-sm text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-          <FileText className="w-6 h-6" />
+        <div className={`p-3 bg-white rounded-xl shadow-sm text-${colorClass}-600 group-hover:bg-${colorClass}-600 group-hover:text-white transition-all`}>
+          {icon || <FileText className="w-6 h-6" />}
         </div>
-        <Printer className="w-4 h-4 text-slate-300 group-hover:text-blue-400" />
+        <Printer className={`w-4 h-4 text-slate-300 group-hover:text-${colorClass}-400`} />
       </div>
       <h4 className="font-bold text-slate-800 text-sm mb-1">{title}</h4>
       <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{desc}</p>
       
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-blue-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
-        <span>{loading ? 'Gerando...' : 'Gerar e Imprimir'}</span>
+      <div className={`mt-4 flex items-center gap-2 text-[10px] font-bold text-${colorClass}-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity`}>
+        <span>{loading ? 'Processando...' : 'Gerar e Visualizar'}</span>
       </div>
     </div>
   );

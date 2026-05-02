@@ -10,7 +10,8 @@ import {
   serverTimestamp,
   getDocs,
   getDoc,
-  setDoc
+  setDoc,
+  orderBy
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
@@ -288,6 +289,71 @@ export const firebaseService = {
       }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}`);
+    }
+  },
+
+  // Student Occurrences
+  addOccurrence: async (schoolId: string, studentId: string, occurrence: any) => {
+    try {
+      const colRef = collection(db, 'schools', schoolId, 'students', studentId, 'occurrences');
+      await addDoc(colRef, {
+        ...occurrence,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/students/${studentId}/occurrences`);
+    }
+  },
+
+  getOccurrences: async (schoolId: string, studentId: string) => {
+    try {
+      const colRef = collection(db, 'schools', schoolId, 'students', studentId, 'occurrences');
+      const q = query(colRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/${studentId}/occurrences`);
+    }
+  },
+
+  // Transfer Requests
+  requestTransfer: async (schoolId: string, studentId: string, studentName: string, reason: string) => {
+    try {
+      const colRef = collection(db, 'schools', schoolId, 'transfers');
+      await addDoc(colRef, {
+        studentId,
+        studentName,
+        reason,
+        status: 'pending',
+        requestedAt: serverTimestamp(),
+        authorEmail: auth.currentUser?.email
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/transfers`);
+    }
+  },
+
+  subscribeToTransfers: (schoolId: string, callback: (transfers: any[]) => void) => {
+    const colRef = collection(db, 'schools', schoolId, 'transfers');
+    const q = query(colRef, orderBy('requestedAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/transfers`);
+    });
+  },
+
+  updateTransferStatus: async (schoolId: string, transferId: string, status: 'approved' | 'rejected', observations?: string) => {
+    try {
+      const docRef = doc(db, 'schools', schoolId, 'transfers', transferId);
+      await setDoc(docRef, {
+        status,
+        observations,
+        resolvedAt: serverTimestamp(),
+        resolvedBy: auth.currentUser?.email
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/transfers/${transferId}`);
     }
   }
 };

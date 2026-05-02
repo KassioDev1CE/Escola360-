@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, User, Trash2, Calendar, Hash, Edit } from 'lucide-react';
+import { Plus, Search, User, Trash2, Calendar, Hash, Edit, AlertTriangle, MessageSquare, Clock } from 'lucide-react';
 import { firebaseService } from '../../lib/firebaseService';
 import { useAuth } from '../../lib/AuthContext';
 
@@ -18,6 +18,15 @@ interface ClassData {
   room: string;
 }
 
+interface Occurrence {
+  id: string;
+  type: string;
+  description: string;
+  date: string;
+  severity: 'low' | 'medium' | 'high';
+  createdAt: any;
+}
+
 export default function Students() {
   const { profile } = useAuth();
   const schoolId = profile?.schoolId || "cm_school_123";
@@ -29,6 +38,18 @@ export default function Students() {
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+
+  // Occurrences State
+  const [isOccurrenceModalOpen, setIsOccurrenceModalOpen] = useState(false);
+  const [selectedStudentForOccurrence, setSelectedStudentForOccurrence] = useState<Student | null>(null);
+  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [newOccurrence, setNewOccurrence] = useState({
+    type: 'Comportamento',
+    description: '',
+    severity: 'low' as 'low' | 'medium' | 'high',
+    date: new Date().toISOString().split('T')[0]
+  });
+  const [loadingOccurrences, setLoadingOccurrences] = useState(false);
   
   // Detalhes do Form de Matrícula
   const [formData, setFormData] = useState({
@@ -69,6 +90,43 @@ export default function Students() {
       unsubClasses();
     };
   }, [schoolId]);
+
+  const handleOpenOccurrences = async (student: Student) => {
+    setSelectedStudentForOccurrence(student);
+    setIsOccurrenceModalOpen(true);
+    setLoadingOccurrences(true);
+    try {
+      const data = await firebaseService.getOccurrences(schoolId, student.id);
+      setOccurrences(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingOccurrences(false);
+    }
+  };
+
+  const handleAddOccurrence = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForOccurrence || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await firebaseService.addOccurrence(schoolId, selectedStudentForOccurrence.id, newOccurrence);
+      const data = await firebaseService.getOccurrences(schoolId, selectedStudentForOccurrence.id);
+      setOccurrences(data || []);
+      setNewOccurrence({
+        type: 'Comportamento',
+        description: '',
+        severity: 'low',
+        date: new Date().toISOString().split('T')[0]
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao adicionar ocorrência.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleEdit = (student: any) => {
     setEditingStudent(student);
@@ -255,6 +313,13 @@ export default function Students() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
+                              <button 
+                                onClick={() => handleOpenOccurrences(student)}
+                                className="text-slate-400 hover:text-amber-500 transition-colors p-1"
+                                title="Ocorrências"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                              </button>
                               <button 
                                 onClick={() => handleEdit(student)}
                                 className="text-slate-400 hover:text-blue-600 transition-colors p-1"
@@ -505,6 +570,121 @@ export default function Students() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isOccurrenceModalOpen && selectedStudentForOccurrence && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+             <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setIsOccurrenceModalOpen(false); setSelectedStudentForOccurrence(null); setOccurrences([]); }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+               initial={{ scale: 0.95, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               exit={{ scale: 0.95, opacity: 0 }}
+               className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+               <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center">
+                       <AlertTriangle className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold">Ocorrências do Aluno</h3>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{selectedStudentForOccurrence.name}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => { setIsOccurrenceModalOpen(false); setSelectedStudentForOccurrence(null); }} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <Trash2 className="w-5 h-5 rotate-45" />
+                  </button>
+               </div>
+
+               <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                  {/* Nova Ocorrência */}
+                  <form onSubmit={handleAddOccurrence} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registrar Nova Ocorrência</p>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500">Tipo</label>
+                           <select 
+                            value={newOccurrence.type} 
+                            onChange={e => setNewOccurrence({...newOccurrence, type: e.target.value})}
+                            className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 outline-none focus:ring-2 focus:ring-amber-500/20"
+                           >
+                              <option value="Comportamento">Comportamento</option>
+                              <option value="Acadêmico">Acadêmico</option>
+                              <option value="Saúde">Saúde</option>
+                              <option value="Outro">Outro</option>
+                           </select>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500">Gravidade</label>
+                           <select 
+                            value={newOccurrence.severity} 
+                            onChange={e => setNewOccurrence({...newOccurrence, severity: e.target.value as any})}
+                            className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 outline-none focus:ring-2 focus:ring-amber-500/20"
+                           >
+                              <option value="low">Verde (Leve)</option>
+                              <option value="medium">Amarela (Média)</option>
+                              <option value="high">Vermelha (Grave)</option>
+                           </select>
+                        </div>
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500">Descrição</label>
+                        <textarea 
+                          required
+                          value={newOccurrence.description}
+                          onChange={e => setNewOccurrence({...newOccurrence, description: e.target.value})}
+                          placeholder="Descreva detalhadamente o ocorrido..."
+                          className="w-full bg-white border border-slate-200 rounded-lg text-xs p-3 min-h-[80px] outline-none focus:ring-2 focus:ring-amber-500/20"
+                        />
+                     </div>
+                     <div className="flex justify-end">
+                        <button 
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition-all flex items-center gap-2"
+                        >
+                          {isSubmitting ? 'Salvando...' : 'Registrar Ocorrência'}
+                        </button>
+                     </div>
+                  </form>
+
+                  {/* Histórico */}
+                  <div className="space-y-4">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Histórico de Registros</p>
+                     {loadingOccurrences ? (
+                       <div className="text-center py-8 text-slate-400 text-xs">Carregando histórico...</div>
+                     ) : occurrences.length === 0 ? (
+                       <div className="text-center py-8 text-slate-400 text-xs italic">Nenhum registro encontrado.</div>
+                     ) : (
+                       <div className="space-y-3">
+                          {occurrences.map(occ => (
+                            <div key={occ.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex gap-4">
+                               <div className={`w-1 h-auto rounded-full shrink-0 ${
+                                 occ.severity === 'high' ? 'bg-rose-500' : occ.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                               }`} />
+                               <div className="flex-1 space-y-1">
+                                  <div className="flex justify-between items-center">
+                                     <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wide">{occ.type}</span>
+                                     <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" /> {occ.createdAt?.toDate().toLocaleString('pt-BR')}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-600 line-clamp-3">{occ.description}</p>
+                               </div>
+                            </div>
+                          ))}
+                       </div>
+                     )}
+                  </div>
+               </div>
             </motion.div>
           </div>
         )}
