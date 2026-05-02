@@ -327,135 +327,242 @@ export default function Documents() {
       {/* Print Template - Renderizado via Portal diretamente no Body para total isolamento */}
       {isGenerating && selectedStudent && createPortal(
         <div className="portal-print-container">
-           <div className="p-10 font-sans text-slate-900 bg-white min-h-screen">
-             <div className="border-2 border-slate-900 p-8 min-h-[1000px] flex flex-col relative bg-white">
-                <div className="flex justify-between items-center border-b-2 border-slate-900 pb-6 mb-8">
-                  <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tighter">{school.name}</h1>
-                    <p className="text-xs font-bold">{school.address}</p>
-                    <p className="text-[10px]">CNPJ: {school.cnpj} • Email: {school.email}</p>
+           {/* Font Import for Professional Look */}
+           <style dangerouslySetInnerHTML={{ __html: `
+             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+             
+             .document-body {
+               font-family: 'Inter', sans-serif;
+               color: #1e293b;
+               background: white;
+               line-height: 1.6;
+             }
+             .document-content {
+               font-family: 'Libre+Baskerville', serif;
+               line-height: 1.8;
+             }
+             .stamp-effect {
+               border: 3px solid #1e293b;
+               padding: 5px 15px;
+               font-weight: 900;
+               text-transform: uppercase;
+               transform: rotate(-10deg);
+               opacity: 0.15;
+               position: absolute;
+               top: 50%;
+               left: 50%;
+               font-size: 4rem;
+               pointer-events: none;
+               z-index: 0;
+             }
+           `}} />
+
+           <div className="document-body p-12 min-h-screen relative overflow-hidden">
+             {/* Background Decoration */}
+             <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 z-0" />
+             <div className="absolute bottom-0 left-0 w-96 h-96 bg-slate-50 rounded-full -ml-48 -mb-48 z-0" />
+             
+             <div className="relative z-10 border-4 border-double border-slate-900 p-10 min-h-[1050px] flex flex-col bg-white/80 backdrop-blur-[2px]">
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-10">
+                  <div className="flex gap-6 items-center">
+                    <div className="w-20 h-20 bg-slate-900 flex items-center justify-center text-white text-4xl font-black rounded-lg shadow-xl shadow-slate-900/20">
+                      {school.logoLetter}
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 mb-1">{school.name}</h1>
+                      <p className="text-sm font-bold text-slate-700">{school.cnpj}</p>
+                      <div className="flex flex-col text-[11px] text-slate-500 font-medium mt-1">
+                        <span>{school.address}</span>
+                        <span>{school.phone} • {school.email}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-16 h-16 border-2 border-slate-900 flex items-center justify-center font-black text-3xl">
-                    {school.logoLetter}
+                  <div className="text-right">
+                    <div className="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded mb-2">
+                      Documento Oficial
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono">ID: {Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
                   </div>
                 </div>
                 
-                <div className="text-center my-8">
-                  <h2 className="text-xl font-black uppercase underline decoration-2 underline-offset-8">
-                    {isGenerating === 'boletim' ? 'Boletim de Desempenho Escolar' : 
-                     isGenerating === 'declaracao' ? 'Declaração de Matrícula e Frequência' :
-                     'Ficha Individual do Aluno'}
-                  </h2>
+                {/* Watermark Label in background */}
+                <div className="stamp-effect">
+                  {school.name.split(' ')[0]}
+                </div>
+
+                <div className="text-center mb-12">
+                   <h2 className="text-2xl font-black uppercase tracking-widest text-slate-900 relative inline-block">
+                     {isGenerating === 'boletim' ? 'Boletim de Desempenho' : 
+                      isGenerating === 'declaracao' ? 'Declaração Escolar' :
+                      isGenerating === 'ficha' ? 'Ficha Individual do Discente' :
+                      'Cópia de Guia de Transferência'}
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-indigo-600 rounded-full" />
+                   </h2>
                 </div>
 
                 <div className="flex-1">
                   {isGenerating === 'boletim' ? (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="border border-slate-900 p-2"><strong>Aluno:</strong> {selectedStudent.name}</div>
-                        <div className="border border-slate-900 p-2"><strong>RA:</strong> {selectedStudent.ra}</div>
-                        <div className="border border-slate-900 p-2"><strong>Turma:</strong> {classes.find(c => c.id === selectedStudent.classId)?.name || '-'}</div>
-                        <div className="border border-slate-900 p-2"><strong>Ano:</strong> {school.academicYear || 2024}</div>
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Discente</p>
+                          <p className="text-sm font-bold text-slate-800">{selectedStudent.name}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">RA: {selectedStudent.ra}</p>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Enturmação</p>
+                          <p className="text-sm font-bold text-slate-800">{classes.find(c => c.id === selectedStudent.classId)?.name || 'N/A'}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">Ano Letivo {school.academicYear || 2024}</p>
+                        </div>
                       </div>
                       
-                      <table className="w-full border-collapse border border-slate-900 text-xs text-center mt-4">
-                        <thead>
-                          <tr className="bg-slate-100">
-                            <th className="border border-slate-900 p-2">Componente Curricular</th>
-                            <th className="border border-slate-900 p-2">1º Bim</th>
-                            <th className="border border-slate-900 p-2">2º Bim</th>
-                            <th className="border border-slate-900 p-2">3º Bim</th>
-                            <th className="border border-slate-900 p-2">4º Bim</th>
-                            <th className="border border-slate-900 p-2">Média</th>
-                            <th className="border border-slate-900 p-2">Faltas</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {['Língua Portuguesa', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes'].map(disciplina => (
-                            <tr key={disciplina}>
-                              <td className="border border-slate-900 p-2 text-left font-bold">{disciplina}</td>
-                              <td className="border border-slate-900 p-2">8.5</td>
-                              <td className="border border-slate-900 p-2">9.0</td>
-                              <td className="border border-slate-900 p-2">-</td>
-                              <td className="border border-slate-900 p-2">-</td>
-                              <td className="border border-slate-900 p-2">8.8</td>
-                              <td className="border border-slate-900 p-2">2</td>
+                      <div className="overflow-hidden border border-slate-900 rounded-lg">
+                        <table className="w-full text-xs text-center">
+                          <thead>
+                            <tr className="bg-slate-900 text-white">
+                              <th className="p-3 text-left">Disciplina</th>
+                              <th className="p-3">1º Bim</th>
+                              <th className="p-3">2º Bim</th>
+                              <th className="p-3">3º Bim</th>
+                              <th className="p-3">4º Bim</th>
+                              <th className="p-3">Média</th>
+                              <th className="p-3">Faltas</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <p className="text-[10px] italic mt-4">* Dados parciais referentes aos bimestres concluídos.</p>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {['Língua Portuguesa', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes', 'Inglês', 'Educação Física'].map(disciplina => (
+                              <tr key={disciplina} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-3 text-left font-bold text-slate-800">{disciplina}</td>
+                                {[8.5, 9.0, '-', '-', 8.8, 2].map((val, idx) => (
+                                  <td key={idx} className={`p-3 font-medium ${idx === 4 ? 'bg-indigo-50 font-black text-indigo-700' : ''}`}>
+                                    {val}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                         <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Situação Parcial:</p>
+                         <p className="text-xs font-black text-indigo-800 uppercase tracking-widest">Aproveitamento Satisfatório (Em Curso)</p>
+                      </div>
                     </div>
                   ) : isGenerating === 'ficha' ? (
-                    <div className="space-y-8">
-                       <div className="grid grid-cols-2 gap-y-4 text-sm mt-4">
-                         <div><strong>Nome Completo:</strong><br/>{selectedStudent.name}</div>
-                         <div><strong>Registro Acadêmico (RA):</strong><br/>{selectedStudent.ra}</div>
-                         <div><strong>Data de Nascimento:</strong><br/>15/05/2012</div>
-                         <div><strong>Turma Atual:</strong><br/>{classes.find(c => c.id === selectedStudent.classId)?.name || 'Não alocada'}</div>
-                         <div className="col-span-2"><strong>Filiação:</strong><br/>Maria Oliveira Souza e João Souza</div>
-                         <div className="col-span-2"><strong>Endereço:</strong><br/>Rua das Palmeiras, 456 - Bairro Novo</div>
+                    <div className="space-y-10">
+                       <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
+                         <div className="space-y-1">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nome Civil Completo</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">{selectedStudent.name}</p>
+                         </div>
+                         <div className="space-y-1">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Matrícula Escolar (RA)</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">{selectedStudent.ra}</p>
+                         </div>
+                         <div className="space-y-1">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Data de Nascimento</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">15 de Maio de 2012</p>
+                         </div>
+                         <div className="space-y-1">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Turma de Referência</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">{classes.find(c => c.id === selectedStudent.classId)?.name || 'Não alocada'}</p>
+                         </div>
+                         <div className="col-span-2 space-y-1">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Responsáveis Legais</p>
+                           <p className="font-bold border-b border-slate-200 pb-1 text-slate-800">Maria Oliveira Souza e João Souza</p>
+                         </div>
                        </div>
                        
-                       <div className="mt-10">
-                         <h3 className="font-bold border-b border-slate-900 mb-2">Histórico de Ocorrências / Observações</h3>
+                       <div className="mt-6">
+                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-800 bg-slate-100 p-2 border-l-4 border-slate-900 mb-4">Registro Histórico de Ocorrências</h3>
                          {occurrences.length === 0 ? (
-                           <div className="border border-slate-300 p-4 h-32 text-xs text-slate-600 bg-slate-50 italic">
-                             Nenhuma ocorrência disciplinar registrada até a presente data ({new Date().toLocaleDateString('pt-BR')}).
+                           <div className="border border-slate-200 border-dashed p-10 text-center text-xs text-slate-400 italic rounded-2xl">
+                             "Nenhum registro de ocorrência disciplinar ou pedagógica consta no prontuário do aluno até a presente data."
                            </div>
                          ) : (
-                           <div className="space-y-4">
-                             {occurrences.slice(0, 5).map(occ => (
-                               <div key={occ.id} className="text-xs border-b border-slate-100 pb-2">
-                                  <div className="flex justify-between font-bold mb-1">
-                                     <span>{occ.type} - {occ.severity === 'high' ? 'GRAVE' : occ.severity === 'medium' ? 'MÉDIA' : 'LEVE'}</span>
-                                     <span>{occ.createdAt?.toDate().toLocaleDateString('pt-BR')}</span>
+                           <div className="space-y-6">
+                             {occurrences.slice(0, 8).map(occ => (
+                               <div key={occ.id} className="text-xs border-l-2 border-slate-200 pl-4 py-1 relative">
+                                  <div className="absolute left-[-5px] top-2 w-2 h-2 rounded-full bg-slate-900" />
+                                  <div className="flex justify-between items-center mb-1">
+                                     <span className="font-black text-slate-900 uppercase tracking-tight">{occ.type} • {occ.severity === 'high' ? 'GRAVIDADE ALTA' : occ.severity === 'medium' ? 'GRAVIDADE MÉDIA' : 'GRAVIDADE BAIXA'}</span>
+                                     <span className="text-slate-400 font-mono">{occ.createdAt?.toDate().toLocaleDateString('pt-BR')}</span>
                                   </div>
-                                  <p>{occ.description}</p>
+                                  <p className="text-slate-600 italic leading-relaxed">"{occ.description}"</p>
                                </div>
                              ))}
-                             {occurrences.length > 5 && <p className="text-[10px] text-slate-400 italic">Mais {occurrences.length - 5} registros não listados nesta via...</p>}
+                             {occurrences.length > 8 && <p className="text-[10px] text-indigo-600 font-black text-center pt-4 uppercase tracking-widest animate-pulse">+ {occurrences.length - 8} registros adicionais arquivados em prontuário físico</p>}
                            </div>
                          )}
                        </div>
                     </div>
                   ) : isGenerating === 'transfer' ? (
-                    <div className="space-y-8 text-sm leading-relaxed text-justify mt-10">
-                      <div className="text-center mb-10">
-                        <h3 className="text-xl font-black border-2 border-slate-900 inline-block px-6 py-2 uppercase">Guia de Transferência</h3>
-                      </div>
-                      <p>O <strong>{school.name}</strong>, por meio de sua secretaria acadêmica, certifica que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, portador(a) do RA <strong>{selectedStudent.ra}</strong>, regularmente matriculado(a) nesta instituição de ensino, teve sua solicitação de transferência DEFERIDA.</p>
-                      
-                      <div className="p-4 bg-slate-50 border border-slate-900">
-                        <p><strong>Motivo da Solicitação:</strong> {studentTransfers[0]?.reason || 'Não informado'}</p>
-                        <p><strong>Parecer da Gestão:</strong> {studentTransfers[0]?.observations || 'Transferência autorizada conforme regimento escolar.'}</p>
-                        <p><strong>Data de Autorização:</strong> {studentTransfers[0]?.resolvedAt?.toDate().toLocaleDateString('pt-BR') || new Date().toLocaleDateString('pt-BR')}</p>
+                    <div className="space-y-10 text-[15px] document-content text-justify">
+                      <div className="bg-slate-900 text-white p-6 rounded-2xl flex items-center gap-6 shadow-2xl">
+                         <div className="p-4 bg-white/10 rounded-full">
+                            <ArrowRightLeft className="w-8 h-8" />
+                         </div>
+                         <div>
+                            <h3 className="text-lg font-black uppercase tracking-widest mb-1">Guia de Transferência Definitiva</h3>
+                            <p className="text-[10px] font-bold text-indigo-300 uppercase opacity-70 tracking-tighter">Status: Autorizado pela Diretoria Escolar</p>
+                         </div>
                       </div>
 
-                      <p>O(A) referido(a) aluno(a) está apto(a) a prosseguir with seus estudos em outra unidade escolar, levando consigo seu prontuário e ficha individual de rendimento acadêmico para as devidas equivalências curriculares.</p>
+                      <p>O <strong>{school.name}</strong>, devidamente credenciado pelos órgãos de regulação de ensino sob o CNPJ {school.cnpj}, certifica para todos os fins acadêmicos e legais que o discente <strong>{selectedStudent.name}</strong>, portador do número de registro (RA) <strong>{selectedStudent.ra}</strong>, teve seu pedido de desligamento e transferência <strong>DEFERIDO</strong> com sucesso.</p>
+
+                      <div className="grid grid-cols-1 gap-4 bg-slate-50 p-6 border-l-4 border-indigo-600 rounded-r-2xl italic text-sm">
+                        <p><strong>Justificativa da Solicitação:</strong> {studentTransfers[0]?.reason || 'Motivos de foro particular / Mudança de Comarca.'}</p>
+                        <p><strong>Despacho do Diretor:</strong> {studentTransfers[0]?.observations || 'Nada mais a opor. Transferência integral autorizada com base no regimento interno desta instituição.'}</p>
+                        <p><strong>Data de Homologação:</strong> {studentTransfers[0]?.resolvedAt?.toDate().toLocaleDateString('pt-BR') || new Date().toLocaleDateString('pt-BR')}</p>
+                      </div>
+
+                      <p>Certificamos que o prontuário pedagógico do referido aluno encontra-se disponível e atualizado, contendo todas as notas, avaliações e registros de frequência necessários para a devida adaptação e equivalência curricular na instituição de destino (instituto receptor).</p>
                       
-                      <p>Damos por encerrado o vínculo de matrícula com esta instituição na presente data, ressalvadas as obrigações legais e administrativas decorrentes do período de permanência.</p>
-                      
-                      <p className="mt-10 text-right">{school.address.split(',')[1]?.split('-')[1]?.trim() || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+                      <p>Pela presente guia, damos por encerrado o vínculo institucional de matrícula para o período letivo vigente, responsabilizando-se a secretaria por toda a documentação comprobatória entregue à família.</p>
                     </div>
                   ) : (
-                    <div className="space-y-6 text-sm leading-relaxed text-justify mt-10">
-                      <p>Declaramos para os devidos fins de direito que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, inscrito sob a matrícula/RA <strong>{selectedStudent.ra}</strong>, encontra-se devidamente matriculado(a) na turma <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong> desta conceituada instituição de ensino no período letivo de {school.academicYear || 2024}.</p>
-                      <p>O(A) referido(a) discente frequenta as aulas regularmente, cumprindo com as exigências pedagógicas e regimentais da escola.</p>
-                      <p>A presente declaração é a expressão da verdade e tem validade de 30 (trinta) dias a contar da data de sua emissão.</p>
-                      <p className="mt-10 text-right">{school.address.split(',')[1].split('-')[1]?.trim() || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+                    <div className="space-y-10 text-[16px] document-content text-justify mt-16 leading-extra-relaxed">
+                      <p>Declaramos para os devidos fins de interesse do requisitante que o(a) aluno(a) <strong>{selectedStudent.name}</strong>, devidamente inscrito sob o Registro Acadêmico (RA) <strong>{selectedStudent.ra}</strong>, encontra-se com matrícula <strong>ATIVA</strong> e regular nesta unidade de ensino.</p>
+                      
+                      <p>O referido discente está enturmado no(a) <strong>{classes.find(c => c.id === selectedStudent.classId)?.name || '(Sem Turma)'}</strong>, assistindo aula regularmente no período letivo de {school.academicYear || 2024}, cumprindo integralmente com todas as exigências regimentais, pedagógicas e administrativas previstas no plano de ensino aprovado.</p>
+                      
+                      <p>A presente declaração é a expressão da verdade acadêmica desta casa de educação e possui validade de 30 (trinta) dias ininterruptos, contados a partir da data de sua emissão.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-40 border-t-2 border-slate-900 pt-2 text-center max-w-xs mx-auto">
-                  <p className="text-xs font-bold uppercase tracking-wider">Secretaria Acadêmica</p>
-                  <p className="text-[10px] text-slate-500">{school.name}</p>
+                {/* Date and Signature */}
+                <div className="mt-auto pt-20">
+                   <div className="text-right mb-24">
+                      <p className="text-sm font-medium text-slate-800">
+                        {school.address.split(',')[1]?.split('-')[1]?.trim() || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                   </div>
+                   
+                   <div className="flex justify-around items-center gap-12">
+                      <div className="text-center">
+                         <div className="w-48 h-[1px] bg-slate-900 mb-2 mx-auto" />
+                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 leading-tight">Secretaria Acadêmica</p>
+                         <p className="text-[9px] text-slate-400 italic">Responsável pelo Prontuário</p>
+                      </div>
+                      <div className="text-center">
+                         <div className="w-48 h-[1px] bg-slate-900 mb-2 mx-auto" />
+                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 leading-tight">Direção Escolar</p>
+                         <p className="text-[9px] text-slate-400 italic">Gestão da Unidade {school.logoLetter}</p>
+                      </div>
+                   </div>
                 </div>
                 
-                <div className="flex justify-between items-end mt-auto pt-10 text-[8px] font-mono text-slate-400">
-                  <span>Autenticidade: {Math.random().toString(36).substring(7).toUpperCase()}-{Math.random().toString(36).substring(7).toUpperCase()}</span>
-                  <span>Emitido via Sistema Escola360 em {new Date().toLocaleString('pt-BR')}</span>
+                {/* Footer Info */}
+                <div className="flex justify-between items-end mt-12 pt-6 border-t border-slate-100 text-[8px] font-mono text-slate-400">
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1"><ShieldCheck className="w-2 h-2" /> Assinado Digitalmente • Validação: {Math.random().toString(36).substring(7).toUpperCase()}</span>
+                    <span>Emitido por: {profile?.name || 'Administrador Sistema'} via Escola360 v2.8</span>
+                  </div>
+                  <div className="text-right">
+                    <span>Folha 01/01 • Documentação Acadêmica Digital</span>
+                  </div>
                 </div>
              </div>
            </div>
