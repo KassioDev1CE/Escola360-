@@ -76,9 +76,11 @@ export const firebaseService = {
     try {
       // Ensure a unique RA if not provided
       const currentYear = new Date().getFullYear();
-      const generatedRa = studentData.ra && studentData.ra.trim() !== '' 
-        ? studentData.ra 
-        : `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+      let generatedRa = studentData.ra;
+      
+      if (!generatedRa || typeof generatedRa !== 'string' || generatedRa.trim() === '') {
+        generatedRa = `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+      }
       
       const docRef = await addDoc(collection(db, `schools/${schoolId}/students`), {
         ...studentData,
@@ -87,7 +89,7 @@ export const firebaseService = {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      return docRef.id;
+      return { id: docRef.id, ra: generatedRa };
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `schools/${schoolId}/students`);
     }
@@ -97,20 +99,21 @@ export const firebaseService = {
     try {
       const docRef = doc(db, `schools/${schoolId}/students`, studentId);
       
-      // If RA is being cleared or is missing, we might want to preserve it or generate it
-      // But usually for updates we just take what's in the form.
-      // However, if it's empty, we should probably generate one if the record didn't have one.
-      let finalRa = studentData.ra;
-      if (!finalRa || finalRa.trim() === '') {
+      // Clean data for Firestore
+      const { id, ...dataToSave } = studentData;
+      
+      let finalRa = dataToSave.ra;
+      if (!finalRa || typeof finalRa !== 'string' || finalRa.trim() === '') {
         const currentYear = new Date().getFullYear();
         finalRa = `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
       }
 
       await updateDoc(docRef, {
-        ...studentData,
-        ra: finalRa,
+        ...dataToSave,
+        ra: finalRa.trim(),
         updatedAt: serverTimestamp(),
       });
+      return finalRa;
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `schools/${schoolId}/students/${studentId}`);
     }

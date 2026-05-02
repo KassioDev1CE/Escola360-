@@ -14,6 +14,7 @@ import {
   MapPin,
   Clock
 } from 'lucide-react';
+import { firebaseService } from '../../lib/firebaseService';
 
 interface ParentPortalProps {
   onLogout?: () => void;
@@ -28,41 +29,31 @@ export default function ParentPortal({ onLogout, user }: ParentPortalProps) {
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
 
   React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [studentRes, scheduleRes] = await Promise.all([
-          fetch('/api/students'),
-          fetch('/api/schedules')
-        ]);
-        
-        if (!studentRes.ok || !scheduleRes.ok) {
-            console.error('Failed to fetch parent data', {
-                students: studentRes.status,
-                schedules: scheduleRes.status
-            });
-            setLoading(false);
-            return;
-        }
-
-        const allStudents = await studentRes.json();
-        const allSchedules = await scheduleRes.json();
-        setSchedules(allSchedules);
-
-        // Filtra apenas os alunos deste responsável
-        const matches = allStudents.filter((s: any) => s.guardianCpf === user?.cpf);
-        setStudents(matches);
-        if (matches.length > 0) {
-          setSelectedStudent(matches[0]);
-          updateTodaySchedule(matches[0].classId, allSchedules);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+    const unsubStudents = firebaseService.subscribeToStudents("cm_school_123", (allStudents) => {
+      // Filtra apenas os alunos deste responsável
+      const matches = allStudents.filter((s: any) => s.guardianCpf === user?.cpf);
+      setStudents(matches);
+      if (matches.length > 0 && !selectedStudent) {
+        setSelectedStudent(matches[0]);
       }
+      setLoading(false);
+    });
+
+    const unsubSchedules = firebaseService.subscribeToSchedules("cm_school_123", (allSchedules) => {
+      setSchedules(allSchedules);
+    });
+
+    return () => {
+      unsubStudents();
+      unsubSchedules();
     };
-    fetchData();
   }, [user?.cpf]);
+
+  React.useEffect(() => {
+    if (selectedStudent && schedules) {
+        updateTodaySchedule(selectedStudent.classId, schedules);
+    }
+  }, [selectedStudent, schedules]);
 
   const updateTodaySchedule = (classId: string, allSchedules: any) => {
     const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];

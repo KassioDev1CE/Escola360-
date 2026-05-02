@@ -82,7 +82,24 @@ export default function Students() {
   });
 
   useEffect(() => {
-    const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
+    const unsubStudents = firebaseService.subscribeToStudents(schoolId, (data) => {
+      setStudents(data);
+      
+      // Auto-migration: If students are missing RA, fix them (Admin helper)
+      const studentsMissingRa = data.filter(s => !s.ra || s.ra.trim() === '');
+      if (studentsMissingRa.length > 0) {
+        console.log(`Fixing ${studentsMissingRa.length} students missing RA...`);
+        studentsMissingRa.forEach(async (s) => {
+          const currentYear = new Date().getFullYear();
+          const newRa = `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+          try {
+            await firebaseService.updateStudent(schoolId, s.id, { ...s, ra: newRa });
+          } catch (e) {
+            console.error("Migration error:", e);
+          }
+        });
+      }
+    });
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
     setInitialLoading(false);
 

@@ -58,12 +58,6 @@ export default function Documents() {
         const data = await firebaseService.getSchoolConfig(schoolId);
         if (data) {
           setSchool(prev => ({ ...prev, ...data }));
-        } else {
-          // Fallback to localStorage if no Firestore data yet
-          const savedConfig = localStorage.getItem('school_config');
-          if (savedConfig) {
-            setSchool(JSON.parse(savedConfig));
-          }
         }
       } catch (error) {
         console.error("Error fetching documents config:", error);
@@ -72,7 +66,19 @@ export default function Documents() {
 
     fetchConfig();
 
-    const unsubStudents = firebaseService.subscribeToStudents(schoolId, setStudents);
+    const unsubStudents = firebaseService.subscribeToStudents(schoolId, (data) => {
+      setStudents(data);
+      
+      // Auto-migration for missing RAs
+      const missingRa = data.filter(s => !s.ra || s.ra.trim() === '');
+      if (missingRa.length > 0) {
+        missingRa.forEach(async (s) => {
+          const currentYear = new Date().getFullYear();
+          const newRa = `${currentYear}${Math.floor(100000 + Math.random() * 900000)}`;
+          await firebaseService.updateStudent(schoolId, s.id, { ...s, ra: newRa });
+        });
+      }
+    });
     const unsubClasses = firebaseService.subscribeToClasses(schoolId, setClasses);
 
     return () => {
@@ -217,7 +223,7 @@ export default function Documents() {
                     </div>
                     <div>
                       <p className="text-xs font-bold truncate max-w-[150px]">{s.name}</p>
-                      <p className={`text-[10px] ${selectedStudentId === s.id ? 'text-blue-100' : 'text-slate-400'}`}>RA: {s.ra || 'N/D'}</p>
+                      <p className={`text-[10px] ${selectedStudentId === s.id ? 'text-blue-100' : 'text-slate-400'}`}>RA: {s.ra || 'Gerando...'}</p>
                     </div>
                   </div>
                 ))

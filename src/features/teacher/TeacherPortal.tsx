@@ -20,6 +20,8 @@ import {
   LogOut
 } from 'lucide-react';
 
+import { firebaseService } from '../../lib/firebaseService';
+
 interface TeacherPortalProps {
   onLogout?: () => void;
   user?: any;
@@ -33,38 +35,30 @@ export default function TeacherPortal({ onLogout, user }: TeacherPortalProps) {
   const [classes, setClasses] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [schedRes, classRes] = await Promise.all([
-          fetch('/api/schedules'),
-          fetch('/api/classes')
-        ]);
-        
-        if (!schedRes.ok || !classRes.ok) {
-            console.error('Failed to fetch teacher data', {
-                schedules: schedRes.status,
-                classes: classRes.status
-            });
-            return;
-        }
+    const unsubClasses = firebaseService.subscribeToClasses("cm_school_123", (data) => {
+      setClasses(data);
+    });
 
-        const schedules = await schedRes.json();
-        const classesData = await classRes.json();
-        
-        setAllSchedules(schedules);
-        setClasses(classesData);
-        findNextClass(schedules, classesData);
-      } catch (error) {
-        console.error('Error fetching teacher data:', error);
-      }
-    };
+    const unsubSchedules = firebaseService.subscribeToSchedules("cm_school_123", (data) => {
+      setAllSchedules(data);
+    });
 
-    fetchData();
     const timer = setInterval(() => {
       setCurrentDate(new Date());
     }, 60000);
-    return () => clearInterval(timer);
+    
+    return () => {
+      unsubClasses();
+      unsubSchedules();
+      clearInterval(timer);
+    };
   }, []);
+
+  useEffect(() => {
+    if (classes.length > 0 && Object.keys(allSchedules).length > 0) {
+      findNextClass(allSchedules, classes);
+    }
+  }, [allSchedules, classes]);
 
   const findNextClass = (schedules: any, classesData: any[]) => {
     const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -336,10 +330,11 @@ function AttendanceView({ classes }: any) {
 
   useEffect(() => {
     if (selectedClass) {
-        fetch('/api/students').then(res => res.json()).then(data => {
+        const unsub = firebaseService.subscribeToStudents("cm_school_123", (data) => {
             const filtered = data.filter((s: any) => s.classId === selectedClass);
             setStudents(filtered);
         });
+        return unsub;
     } else {
         setStudents([]);
     }
