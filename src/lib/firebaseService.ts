@@ -12,7 +12,8 @@ import {
   getDoc,
   setDoc,
   orderBy,
-  writeBatch
+  writeBatch,
+  collectionGroup
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 
@@ -267,6 +268,7 @@ export const firebaseService = {
           batch.set(docRef, {
             ...dataToSave,
             classId,
+            schoolId, // Critical for collectionGroup security
             updatedAt: serverTimestamp(),
           }, { merge: true });
         });
@@ -277,6 +279,7 @@ export const firebaseService = {
             ...grade,
             subject,
             classId,
+            schoolId, // Critical for collectionGroup security
             updatedAt: serverTimestamp(),
           }, { merge: true });
         });
@@ -285,6 +288,28 @@ export const firebaseService = {
       await batch.commit();
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/students/grades`);
+    }
+  },
+
+  saveAttendance: async (schoolId: string, classId: string, attendanceData: any[]) => {
+    try {
+      const batch = writeBatch(db);
+      const today = new Date().toISOString().split('T')[0];
+
+      attendanceData.forEach(att => {
+        const docRef = doc(db, `schools/${schoolId}/students/${att.studentId}/attendance/${today}_${classId}`);
+        batch.set(docRef, {
+          ...att,
+          date: today,
+          classId,
+          schoolId, // Critical for collectionGroup security
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      });
+
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/students/attendance`);
     }
   },
 
@@ -580,5 +605,22 @@ export const firebaseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `users/${profileId}`);
     }
+  },
+
+  // Reports Subscriptions
+  subscribeToGrades: (schoolId: string, callback: (grades: any[]) => void) => {
+    // We use collectionGroup for nested performance docs, filtered by schoolId
+    const q = query(collectionGroup(db, 'performance'), where('schoolId', '==', schoolId));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'performance-collection-group'));
+  },
+
+  subscribeToAttendance: (schoolId: string, callback: (attendance: any[]) => void) => {
+    // Assuming attendance might be in a collection group 'attendance'
+    const q = query(collectionGroup(db, 'attendance'), where('schoolId', '==', schoolId));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'attendance-collection-group'));
   }
 };

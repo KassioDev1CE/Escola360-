@@ -328,18 +328,46 @@ function AttendanceView({ classes, schoolId }: any) {
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, 'present' | 'absent' | 'justified'>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (selectedClass) {
         const unsub = firebaseService.subscribeToStudents(schoolId || "cm_school_123", (data) => {
             const filtered = data.filter((s: any) => s.classId === selectedClass);
             setStudents(filtered);
+            // Pre-fill with present by default
+            const initialMap: any = {};
+            filtered.forEach(s => {
+              initialMap[s.id] = 'present';
+            });
+            setAttendanceMap(initialMap);
         });
         return unsub;
     } else {
         setStudents([]);
+        setAttendanceMap({});
     }
   }, [selectedClass, schoolId]);
+
+  const handleSave = async () => {
+    if (!selectedClass) return;
+    setSaving(true);
+    try {
+      const data = Object.entries(attendanceMap).map(([studentId, status]) => ({
+        studentId,
+        status,
+        schoolId
+      }));
+      await firebaseService.saveAttendance(schoolId, selectedClass, data);
+      alert('Frequência salva com sucesso!');
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao salvar frequência.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -361,6 +389,7 @@ function AttendanceView({ classes, schoolId }: any) {
                     ))}
                   </select>
                 </div>
+                {/* ... other selects remain similar ... */}
                 <div className="min-w-[200px]">
                   <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Tempo / Horário</label>
                   <select className="w-full bg-slate-100 border-none rounded-xl text-xs font-bold p-3 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
@@ -383,15 +412,26 @@ function AttendanceView({ classes, schoolId }: any) {
                 </div>
             </div>
           </div>
-          <button className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:bg-black transition-all flex items-center gap-2 shadow-2xl shadow-slate-900/10">
-            <Save className="w-4 h-4" /> SALVAR CHAMADA
+          <button 
+            onClick={handleSave}
+            disabled={saving || !selectedClass}
+            className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:bg-black transition-all flex items-center gap-2 shadow-2xl shadow-slate-900/10 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
+            SALVAR CHAMADA
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
-            <StudentAttendanceCard key={s.id} student={s} />
+            <StudentAttendanceCard 
+              key={s.id} 
+              student={s} 
+              status={attendanceMap[s.id]} 
+              onChange={(newStatus: any) => setAttendanceMap(prev => ({ ...prev, [s.id]: newStatus }))}
+            />
           ))}
+          {/* ... existing empty states ... */}
           {selectedClass && students.length === 0 && (
               <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase text-xs tracking-widest border-2 border-dashed border-slate-100 rounded-3xl">
                   Nenhum aluno matriculado nesta turma.
@@ -408,21 +448,19 @@ function AttendanceView({ classes, schoolId }: any) {
   );
 }
 
-function StudentAttendanceCard({ student }: any) {
-  const [status, setStatus] = useState<'p' | 'f' | 'j' | null>(null);
-
+function StudentAttendanceCard({ student, status, onChange }: any) {
   return (
     <div className={`p-5 rounded-2xl border transition-all ${
-      status === 'p' ? 'bg-emerald-50/30 border-emerald-100 shadow-inner' : 
-      status === 'f' ? 'bg-rose-50/30 border-rose-100 shadow-inner' :
-      status === 'j' ? 'bg-amber-50/30 border-amber-100 shadow-inner' :
+      status === 'present' ? 'bg-emerald-50/30 border-emerald-100 shadow-inner' : 
+      status === 'absent' ? 'bg-rose-50/30 border-rose-100 shadow-inner' :
+      status === 'justified' ? 'bg-amber-50/30 border-amber-100 shadow-inner' :
       'bg-slate-50/30 border-slate-100 shadow-sm'
     }`}>
       <div className="flex items-center gap-4 mb-4">
         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs transition-colors ${
-          status === 'p' ? 'bg-emerald-500 text-white' : 
-          status === 'f' ? 'bg-rose-500 text-white' :
-          status === 'j' ? 'bg-amber-500 text-white' : 'bg-white text-slate-400'
+          status === 'present' ? 'bg-emerald-500 text-white' : 
+          status === 'absent' ? 'bg-rose-500 text-white' :
+          status === 'justified' ? 'bg-amber-500 text-white' : 'bg-white text-slate-400'
         }`}>
           {student.name.charAt(0)}
         </div>
@@ -432,9 +470,9 @@ function StudentAttendanceCard({ student }: any) {
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
-         <AttendanceBtn active={status === 'p'} label="PRES" color="bg-emerald-500" onClick={() => setStatus('p')} />
-         <AttendanceBtn active={status === 'f'} label="FALT" color="bg-rose-500" onClick={() => setStatus('f')} />
-         <AttendanceBtn active={status === 'j'} label="JUST" color="bg-amber-500" onClick={() => setStatus('j')} />
+         <AttendanceBtn active={status === 'present'} label="PRES" color="bg-emerald-500" onClick={() => onChange('present')} />
+         <AttendanceBtn active={status === 'absent'} label="FALT" color="bg-rose-500" onClick={() => onChange('absent')} />
+         <AttendanceBtn active={status === 'justified'} label="JUST" color="bg-amber-500" onClick={() => onChange('justified')} />
       </div>
     </div>
   );

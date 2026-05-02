@@ -140,6 +140,7 @@
         "b3_absences": { "type": "string" },
         "b4_grade": { "type": "string" },
         "b4_absences": { "type": "string" },
+        "schoolId": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
