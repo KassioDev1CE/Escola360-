@@ -110,49 +110,74 @@ export default function Reports() {
 
   // Calculations for charts
   const ageData = useMemo(() => {
-    const ageMap: Record<number, number> = {};
-    const now = new Date();
-    
-    students.forEach(s => {
-      const bDate = toDate(s.birthDate);
-      if (bDate) {
-        let age = now.getFullYear() - bDate.getFullYear();
-        const m = now.getMonth() - bDate.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < bDate.getDate())) age--;
-        
-        ageMap[age] = (ageMap[age] || 0) + 1;
-      }
-    });
+    try {
+      const ageMap: Record<number, number> = {};
+      const now = new Date();
+      const safeStudents = Array.isArray(students) ? students : [];
+      
+      safeStudents.forEach(s => {
+        if (!s) return;
+        const bDate = toDate(s.birthDate);
+        if (bDate) {
+          let age = now.getFullYear() - bDate.getFullYear();
+          const m = now.getMonth() - bDate.getMonth();
+          if (m < 0 || (m === 0 && now.getDate() < bDate.getDate())) age--;
+          
+          if (age >= 0 && age < 120) {
+            ageMap[age] = (ageMap[age] || 0) + 1;
+          }
+        }
+      });
 
-    return Object.entries(ageMap)
-      .map(([age, count]) => ({ age: `${age} anos`, count }))
-      .sort((a, b) => parseInt(a.age) - parseInt(b.age));
+      return Object.entries(ageMap)
+        .map(([age, count]) => ({ age: `${age} anos`, count }))
+        .sort((a, b) => parseInt(a.age) - parseInt(b.age));
+    } catch (err) {
+      console.error("Error calculating ageData:", err);
+      return [];
+    }
   }, [students]);
 
   const genderData = useMemo(() => {
-    let m = 0, f = 0, o = 0;
-    students.forEach(s => {
-      const g = (s.gender || '').toUpperCase();
-      if (g === 'M') m++;
-      else if (g === 'F') f++;
-      else o++;
-    });
-    return [
-      { name: 'Masculino', value: m },
-      { name: 'Feminino', value: f },
-      { name: 'Outro/NB', value: o }
-    ].filter(v => v.value > 0);
+    try {
+      let m = 0, f = 0, o = 0;
+      const safeStudents = Array.isArray(students) ? students : [];
+      
+      safeStudents.forEach(s => {
+        if (!s) return;
+        const g = (s.gender || '').toUpperCase();
+        if (g === 'M') m++;
+        else if (g === 'F') f++;
+        else o++;
+      });
+      return [
+        { name: 'Masculino', value: m },
+        { name: 'Feminino', value: f },
+        { name: 'Outro/NB', value: o }
+      ].filter(v => v.value > 0);
+    } catch (err) {
+      console.error("Error calculating genderData:", err);
+      return [];
+    }
   }, [students]);
 
   const classData = useMemo(() => {
-    return classes.map(c => {
-      const studentCount = students.filter(s => s.classId === c.id).length;
-      return { 
-        name: c.name, 
-        vagas: c.capacity || 30, 
-        ocupado: studentCount 
-      };
-    }).slice(0, 10);
+    try {
+      const safeClasses = Array.isArray(classes) ? classes : [];
+      const safeStudents = Array.isArray(students) ? students : [];
+      
+      return safeClasses.map(c => {
+        const studentCount = safeStudents.filter(s => s && s.classId === c.id).length;
+        return { 
+          name: c.name || 'Sem Nome', 
+          vagas: parseInt(c.capacity) || 30, 
+          ocupado: studentCount 
+        };
+      }).slice(0, 10);
+    } catch (err) {
+      console.error("Error calculating classData:", err);
+      return [];
+    }
   }, [classes, students]);
 
   // Helper for census date (Last Wednesday of May)
@@ -168,28 +193,34 @@ export default function Reports() {
 
   // Helper for filtered report lists
   const filteredStudents = useMemo(() => {
-    switch (activeTab) {
-      case 'alunos': return students;
-      case 'transfers': return students.filter(s => s.status === 'Transferido' || s.status === 'Em Transferência');
-      case 'bolsas': return students.filter(s => s.socialProgram === 'yes' || s.scholarship);
-      case 'map-deficiencia': return students.filter(s => s.disabilities && s.disabilities.length > 0);
-      case 'map-doencas': return students.filter(s => s.healthConditions && s.healthConditions.length > 0);
-      case 'map-transporte': return students.filter(s => s.publicTransport === true);
-      case 'map-enturmacao': return students.filter(s => s.classId);
-      case 'map-raca': return students.filter(s => s.race && s.race !== '');
-      case 'census-initial': 
-        return students.filter(s => {
-          const created = toDate(s.createdAt);
-          if (!created) return true; // Default to census if no date
-          return created <= censusBaseDate;
-        });
-      case 'census-admitted':
-        return students.filter(s => {
-          const created = toDate(s.createdAt);
-          if (!created) return false;
-          return created > censusBaseDate;
-        });
-      default: return students;
+    try {
+      const safeStudents = Array.isArray(students) ? students.filter(Boolean) : [];
+      switch (activeTab) {
+        case 'alunos': return safeStudents;
+        case 'transfers': return safeStudents.filter(s => s.status === 'Transferido' || s.status === 'Em Transferência');
+        case 'bolsas': return safeStudents.filter(s => s.socialProgram === 'yes' || s.scholarship);
+        case 'map-deficiencia': return safeStudents.filter(s => s.disabilities && s.disabilities.length > 0);
+        case 'map-doencas': return safeStudents.filter(s => s.healthConditions && s.healthConditions.length > 0);
+        case 'map-transporte': return safeStudents.filter(s => s.publicTransport === true);
+        case 'map-enturmacao': return safeStudents.filter(s => s.classId);
+        case 'map-raca': return safeStudents.filter(s => s.race && s.race !== '');
+        case 'census-initial': 
+          return safeStudents.filter(s => {
+            const created = toDate(s.createdAt);
+            if (!created) return true; // Default to census if no date
+            return created <= censusBaseDate;
+          });
+        case 'census-admitted':
+          return safeStudents.filter(s => {
+            const created = toDate(s.createdAt);
+            if (!created) return false;
+            return created > censusBaseDate;
+          });
+        default: return safeStudents;
+      }
+    } catch (err) {
+      console.error("Error calculating filteredStudents:", err);
+      return [];
     }
   }, [students, activeTab, censusBaseDate]);
 
@@ -261,49 +292,74 @@ export default function Reports() {
 
   // Real data for performance monitoring
   const performanceTrends = useMemo(() => {
-    const bimestres = ['1º Bim', '2º Bim', '3º Bim', '4º Bim'];
-    return bimestres.map(bim => {
-      const bimKey = bim.charAt(0); // '1', '2', '3', '4'
-      const bimGrades = grades.filter(g => g[`b${bimKey}_grade`]);
-      const total = bimGrades.length;
-      const approved = bimGrades.filter(g => parseFloat(g[`b${bimKey}_grade`]) >= 6).length;
+    try {
+      const bimestres = ['1º Bim', '2º Bim', '3º Bim', '4º Bim'];
+      const safeGrades = Array.isArray(grades) ? grades : [];
       
-      const aprova = total > 0 ? (approved / total) * 100 : 0;
-      const reprova = total > 0 ? 100 - aprova : 0;
-      
-      return { 
-        name: bim, 
-        aprova: parseFloat(aprova.toFixed(1)), 
-        reprova: parseFloat(reprova.toFixed(1)),
-        total
-      };
-    });
+      return bimestres.map(bim => {
+        const bimKey = bim.charAt(0); // '1', '2', '3', '4'
+        const bimGrades = safeGrades.filter(g => g && g[`b${bimKey}_grade`]);
+        const total = bimGrades.length;
+        const approved = bimGrades.filter(g => {
+          const val = parseFloat(g[`b${bimKey}_grade`]);
+          return !isNaN(val) && val >= 6;
+        }).length;
+        
+        const aprova = total > 0 ? (approved / total) * 100 : 0;
+        const reprova = total > 0 ? 100 - aprova : 0;
+        
+        return { 
+          name: bim, 
+          aprova: parseFloat(aprova.toFixed(1)), 
+          reprova: parseFloat(reprova.toFixed(1)),
+          total
+        };
+      });
+    } catch (err) {
+      console.error("Error calculating performanceTrends:", err);
+      return [
+        { name: '1º Bim', aprova: 0, reprova: 0, total: 0 },
+        { name: '2º Bim', aprova: 0, reprova: 0, total: 0 },
+        { name: '3º Bim', aprova: 0, reprova: 0, total: 0 },
+        { name: '4º Bim', aprova: 0, reprova: 0, total: 0 }
+      ];
+    }
   }, [grades]);
 
   // Helper for dashboard overview stats
   const dashboardStats = useMemo(() => {
-    const now = new Date();
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-    
-    const safeStudents = Array.isArray(students) ? students : [];
-    const safeAttendance = Array.isArray(attendance) ? attendance : [];
-    const safeClasses = Array.isArray(classes) ? classes : [];
-
-    const newStudents = safeStudents.filter(s => {
-      const created = toDate(s.createdAt);
-      return created && created > lastMonth;
-    }).length;
-
-    const totalAttendance = safeAttendance.length;
-    const presents = safeAttendance.filter(a => a.status === 'present').length;
-    const avgAttendance = totalAttendance > 0 ? ((presents / totalAttendance) * 100).toFixed(1) : '0';
-
-    return {
-      totalStudents: safeStudents.length,
-      activeClasses: safeClasses.length,
-      avgAttendance: avgAttendance + '%',
-      newEnrollments: newStudents
-    };
+    try {
+      const now = new Date();
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      
+      const safeStudents = Array.isArray(students) ? students.filter(Boolean) : [];
+      const safeAttendance = Array.isArray(attendance) ? attendance.filter(Boolean) : [];
+      const safeClasses = Array.isArray(classes) ? classes.filter(Boolean) : [];
+  
+      const newStudents = safeStudents.filter(s => {
+        const created = toDate(s.createdAt);
+        return created && created > lastMonth;
+      }).length;
+  
+      const totalAttendance = safeAttendance.length;
+      const presents = safeAttendance.filter(a => a.status === 'present' || a.status === 'P').length;
+      const avgAttendance = totalAttendance > 0 ? ((presents / totalAttendance) * 100).toFixed(1) : '0';
+  
+      return {
+        totalStudents: safeStudents.length,
+        activeClasses: safeClasses.length,
+        avgAttendance: avgAttendance + '%',
+        newEnrollments: newStudents
+      };
+    } catch (err) {
+      console.error("Error calculating dashboardStats:", err);
+      return {
+        totalStudents: 0,
+        activeClasses: 0,
+        avgAttendance: '0%',
+        newEnrollments: 0
+      };
+    }
   }, [students, classes, attendance]);
 
   const renderContent = () => {
@@ -500,10 +556,11 @@ export default function Reports() {
           <motion.div key="notas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <h2 className="text-2xl font-black text-slate-800">Mapa de Notas por Turma</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {classes.map(cls => {
-                const classGrades = grades.filter(g => g.classId === cls.id);
+              {(Array.isArray(classes) ? classes : []).map(cls => {
+                const safeGrades = Array.isArray(grades) ? grades : [];
+                const classGrades = safeGrades.filter(g => g && g.classId === cls.id);
                 const avg = classGrades.length ? 
-                  (classGrades.reduce((sum, g) => sum + (g.grade || 0), 0) / classGrades.length).toFixed(1) : 
+                  (classGrades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / classGrades.length).toFixed(1) : 
                   'N/A';
                 
                 return (
@@ -538,9 +595,10 @@ export default function Reports() {
           <motion.div key="frequencia" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <h2 className="text-2xl font-black text-slate-800">Mapa de Infrequência</h2>
             <ReportTable 
-              data={students.map(s => {
-                const studentAttendance = attendance.filter(a => a.studentId === s.id);
-                const absenses = studentAttendance.filter(a => a.status === 'absent').length;
+              data={(Array.isArray(students) ? students : []).map(s => {
+                const safeAttendance = Array.isArray(attendance) ? attendance : [];
+                const studentAttendance = safeAttendance.filter(a => a && a.studentId === s.id);
+                const absenses = studentAttendance.filter(a => a.status === 'absent' || a.status === 'F').length;
                 return { ...s, absenses };
               }).sort((a,b) => b.absenses - a.absenses)}
               columns={[
@@ -594,9 +652,10 @@ export default function Reports() {
           <motion.div key="rank" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <h2 className="text-2xl font-black text-slate-800">Ranking por Desempenho</h2>
             <ReportTable 
-              data={students.map(s => {
-                const sGrades = grades.filter(g => g.studentId === s.id);
-                const avg = sGrades.length ? sGrades.reduce((a, b) => a + (b.grade || 0), 0) / sGrades.length : 0;
+              data={(Array.isArray(students) ? students : []).map(s => {
+                const safeGrades = Array.isArray(grades) ? grades : [];
+                const sGrades = safeGrades.filter(g => g && g.studentId === s.id);
+                const avg = sGrades.length ? sGrades.reduce((a, b) => a + (parseFloat(b.grade) || 0), 0) / sGrades.length : 0;
                 return { ...s, avg };
               }).sort((a, b) => b.avg - a.avg).slice(0, 20)}
               columns={[
@@ -631,16 +690,16 @@ export default function Reports() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Professores Cadastrados</span>
-                    <span className="font-black text-slate-800">{teachers.length}</span>
+                    <span className="font-black text-slate-800">{Array.isArray(teachers) ? teachers.length : 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Turmas Ativas</span>
-                    <span className="font-black text-slate-800">{classes.length}</span>
+                    <span className="font-black text-slate-800">{Array.isArray(classes) ? classes.length : 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Média Alunos/Turma</span>
                     <span className="font-black text-slate-800">
-                      {classes.length > 0 ? (students.length / classes.length).toFixed(1) : 0}
+                      {Array.isArray(classes) && classes.length > 0 ? ((Array.isArray(students) ? students.length : 0) / classes.length).toFixed(1) : 0}
                     </span>
                   </div>
                 </div>
@@ -650,19 +709,19 @@ export default function Reports() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Total de Turmas</span>
-                    <span className="font-black text-slate-800">{classes.length}</span>
+                    <span className="font-black text-slate-800">{Array.isArray(classes) ? classes.length : 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Vagas Totais</span>
                     <span className="font-black text-slate-800">
-                      {classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0)}
+                      {Array.isArray(classes) ? classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0) : 0}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-orange-50/50 rounded-2xl">
                     <span className="text-sm font-bold text-slate-600">Taxa de Ocupação</span>
                     <span className="font-black text-emerald-600">
-                      {classes.length > 0 ? (
-                        (students.length / classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0) * 100).toFixed(1)
+                      {Array.isArray(classes) && classes.length > 0 ? (
+                        ((Array.isArray(students) ? students.length : 0) / classes.reduce((sum, c) => sum + (parseInt(c.capacity) || 30), 0) * 100).toFixed(1)
                       ) : 0}%
                     </span>
                   </div>
