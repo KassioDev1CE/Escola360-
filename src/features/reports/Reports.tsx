@@ -46,6 +46,122 @@ const toDate = (val: any) => {
   }
 };
 
+// Sub-components moved outside for performance and stability
+const StatCard = ({ title, value, icon, trend, color }: any) => (
+  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:border-slate-200">
+    <div className="flex items-center justify-between mb-4">
+      <div className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600`}>
+        {icon}
+      </div>
+      {trend && (
+        <span className="flex items-center text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
+          <ArrowUpRight className="w-3 h-3 mr-1" />
+          {trend}
+        </span>
+      )}
+    </div>
+    <div>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
+      <p className="text-3xl font-black text-slate-800 mt-1">{value || 0}</p>
+    </div>
+  </div>
+);
+
+const ReportTable = ({ data, columns }: { data: any[], columns: any[] }) => (
+  <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="bg-slate-50/50 border-b border-slate-100">
+            {(columns || []).map((col, idx) => (
+              <th key={idx} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{col.header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {!data || data.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 font-medium italic">
+                Nenhum registro encontrado para este relatório.
+              </td>
+            </tr>
+          ) : (
+            data.map((item, idx) => (
+              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                {(columns || []).map((col, cIdx) => (
+                  <td key={cIdx} className="px-6 py-4">
+                    {col.render ? col.render(item) : (
+                      <span className="text-sm font-bold text-slate-600">{item ? item[col.key] : '-'}</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+function NavItem({ id, label, icon, activeTab, setActiveTab }: any) {
+  const active = activeTab === id;
+  return (
+    <button 
+      onClick={() => setActiveTab(id)}
+      className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
+        active 
+          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+      }`}
+    >
+      <div className={active ? 'text-white' : 'text-indigo-400'}>
+        {icon}
+      </div>
+      {label}
+    </button>
+  );
+}
+
+function SubNavItem({ id, label, activeTab, setActiveTab }: any) {
+  const active = activeTab === id;
+  return (
+    <button 
+      onClick={() => setActiveTab(id)}
+      className={`w-full text-left px-4 py-2 rounded-lg text-[11px] font-bold transition-all ${
+        active 
+          ? 'text-indigo-600 bg-indigo-50/50' 
+          : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function getTabLabel(id: string): string {
+  const labels: Record<string, string> = {
+    'alunos': 'Relatório Geral de Alunos',
+    'transfers': 'Transferências SPAECE',
+    'calendario': 'Calendário Letivo',
+    'classificacao': 'Classificação por Período',
+    'dados-gerais': 'Dados Gerais do Aluno',
+    'monitoramento': 'Monitoramento de Resultados',
+    'bolsas': 'Alunos que recebem Bolsa',
+    'rendimentos': 'Status dos Rendimentos',
+    'map-enturmacao': 'Mapa de Enturmação',
+    'map-deficiencia': 'Mapa Deficiência',
+    'map-doencas': 'Mapa de Doenças/Síndromes',
+    'map-notas': 'Mapa de Notas',
+    'map-infrequencia': 'Mapa de Infrequência',
+    'map-transporte': 'Mapa de Transporte Escolar',
+    'map-raca': 'Mapa de Cor/Raça (Censo)',
+    'census-initial': 'Matrícula Inicial (Censo)',
+    'census-admitted': 'Alunos Admitidos (Pós-Censo)'
+  };
+  return labels[id] || id;
+}
+
 export default function Reports() {
   const { profile } = useAuth();
   const schoolId = profile?.schoolId || "";
@@ -232,63 +348,6 @@ export default function Reports() {
       </div>
     );
   }
-
-  const StatCard = ({ title, value, icon, trend, color }: any) => (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600`}>
-          {icon}
-        </div>
-        {trend && (
-          <span className="flex items-center text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
-            <ArrowUpRight className="w-3 h-3 mr-1" />
-            {trend}
-          </span>
-        )}
-      </div>
-      <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
-        <p className="text-3xl font-black text-slate-800 mt-1">{value}</p>
-      </div>
-    </div>
-  );
-
-  const ReportTable = ({ data, columns }: { data: any[], columns: any[] }) => (
-    <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50/50 border-b border-slate-100">
-              {columns.map((col, idx) => (
-                <th key={idx} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{col.header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {data.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 font-medium">
-                  Nenhum registro encontrado para este relatório.
-                </td>
-              </tr>
-            ) : (
-              data.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                  {columns.map((col, cIdx) => (
-                    <td key={cIdx} className="px-6 py-4">
-                      {col.render ? col.render(item) : (
-                        <span className="text-sm font-bold text-slate-600">{item[col.key]}</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   // Real data for performance monitoring
   const performanceTrends = useMemo(() => {
@@ -876,62 +935,4 @@ export default function Reports() {
       </div>
     </div>
   );
-}
-
-function NavItem({ id, label, icon, activeTab, setActiveTab }: any) {
-  const active = activeTab === id;
-  return (
-    <button 
-      onClick={() => setActiveTab(id)}
-      className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
-        active 
-          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-      }`}
-    >
-      <div className={active ? 'text-white' : 'text-indigo-400'}>
-        {icon}
-      </div>
-      {label}
-    </button>
-  );
-}
-
-function SubNavItem({ id, label, activeTab, setActiveTab }: any) {
-  const active = activeTab === id;
-  return (
-    <button 
-      onClick={() => setActiveTab(id)}
-      className={`w-full text-left px-4 py-2 rounded-lg text-[11px] font-bold transition-all ${
-        active 
-          ? 'text-indigo-600 bg-indigo-50/50' 
-          : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function getTabLabel(id: string): string {
-  const labels: Record<string, string> = {
-    'alunos': 'Relatório Geral de Alunos',
-    'transfers': 'Transferências SPAECE',
-    'calendario': 'Calendário Letivo',
-    'classificacao': 'Classificação por Período',
-    'dados-gerais': 'Dados Gerais do Aluno',
-    'monitoramento': 'Monitoramento de Resultados',
-    'bolsas': 'Alunos que recebem Bolsa',
-    'rendimentos': 'Status dos Rendimentos',
-    'map-enturmacao': 'Mapa de Enturmação',
-    'map-deficiencia': 'Mapa Deficiência',
-    'map-doencas': 'Mapa de Doenças/Síndromes',
-    'map-notas': 'Mapa de Notas',
-    'map-infrequencia': 'Mapa de Infrequência',
-    'map-transporte': 'Mapa de Transporte Escolar',
-    'map-raca': 'Mapa de Cor/Raça (Censo)',
-    'census-initial': 'Matrícula Inicial (Censo)',
-    'census-admitted': 'Alunos Admitidos (Pós-Censo)'
-  };
-  return labels[id] || id;
 }
