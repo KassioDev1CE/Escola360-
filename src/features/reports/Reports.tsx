@@ -172,21 +172,7 @@ export default function Reports() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Security Check
-  if (profile && profile.role !== 'admin' && profile.role !== 'director' && profile.role !== 'secretary') {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border border-slate-200">
-        <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-6">
-          <FileBarChart className="w-10 h-10" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
-        <p className="text-slate-500 mt-2 text-center max-w-sm">
-          Apenas gestores e secretários possuem permissão para visualizar os relatórios consolidados da instituição.
-        </p>
-      </div>
-    );
-  }
-
+  // State & Data Fetching
   const [activeTab, setActiveTab] = useState('graficos');
   const [expandedMap, setExpandedMap] = useState(false);
   const [expandedCenso, setExpandedCenso] = useState(false);
@@ -340,15 +326,6 @@ export default function Reports() {
     }
   }, [students, activeTab, censusBaseDate]);
 
-  if (loading) {
-    return (
-      <div className="p-20 text-center">
-        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 font-bold text-slate-500">Gerando relatórios consolidados...</p>
-      </div>
-    );
-  }
-
   // Real data for performance monitoring
   const performanceTrends = useMemo(() => {
     try {
@@ -420,6 +397,30 @@ export default function Reports() {
       };
     }
   }, [students, classes, attendance]);
+
+  // Security Check
+  if (profile && profile.role !== 'admin' && profile.role !== 'director' && profile.role !== 'secretary') {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border border-slate-200">
+        <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-6">
+          <FileBarChart className="w-10 h-10" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
+        <p className="text-slate-500 mt-2 text-center max-w-sm">
+          Apenas gestores e secretários possuem permissão para visualizar os relatórios consolidados da instituição.
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-20 text-center">
+        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
+        <p className="mt-4 font-bold text-slate-500">Gerando relatórios consolidados...</p>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
