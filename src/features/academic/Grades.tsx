@@ -54,27 +54,39 @@ export default function Grades() {
     };
   }, []);
 
-  const handleFetchStudentsGrades = async () => {
-    if (!selectedClassId) return;
-    
-    setLoading(true);
-    try {
-      const cls = classes.find(c => c.id === selectedClassId);
-      const isInfant = cls?.level === 'creche' || cls?.level === 'pre-escola';
-      
-      let gradesData;
-      if (isInfant) {
-        gradesData = await firebaseService.getPedagogicalReportsByClass(schoolId, selectedClassId);
-      } else {
-        gradesData = await firebaseService.getGradesByClass(schoolId, selectedClassId);
-      }
-      setPerformanceData(gradesData || []);
+  useEffect(() => {
+    if (!selectedClassId) {
+      setStudents([]);
+      setSelectedClass(null);
+      return;
+    }
 
-      const unsub = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
-        const classStudents = allStudents.filter(s => s.classId === selectedClassId);
-        
-        const enrichedStudents = classStudents.map(student => {
-            const studentPerf = gradesData?.find(pd => pd.studentId === student.id);
+    const cls = classes.find(c => c.id === selectedClassId);
+    setSelectedClass(cls);
+    const isInfant = cls?.level === 'creche' || cls?.level === 'pre-escola';
+
+    let isMounted = true;
+    setLoading(true);
+
+    const loadData = async () => {
+      try {
+        let gradesData: any[] = [];
+        if (isInfant) {
+          gradesData = await firebaseService.getPedagogicalReportsByClass(schoolId, selectedClassId) || [];
+        } else {
+          gradesData = await firebaseService.getGradesByClass(schoolId, selectedClassId) || [];
+        }
+
+        if (!isMounted) return;
+        setPerformanceData(gradesData);
+
+        const unsub = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
+          if (!isMounted) return;
+          
+          const classStudents = allStudents.filter(s => s.classId === selectedClassId);
+          
+          const enrichedStudents = classStudents.map(student => {
+            const studentPerf = gradesData.find(pd => pd.studentId === student.id);
             
             if (isInfant) {
                return {
@@ -93,16 +105,28 @@ export default function Grades() {
                 grade: specificPerf?.[`b${selectedBimester}_grade`] || '',
                 absences: specificPerf?.[`b${selectedBimester}_absences`] || '0'
             };
+          });
+          
+          setStudents(enrichedStudents);
+          setLoading(false);
         });
-        setStudents(enrichedStudents);
-        setLoading(false);
+
+        return unsub;
+      } catch (error) {
+        console.error("Error loading student grades:", error);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    const unsubPromise = loadData();
+
+    return () => {
+      isMounted = false;
+      unsubPromise.then(unsub => {
+        if (unsub) unsub();
       });
-      return unsub;
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-    }
-  };
+    };
+  }, [selectedClassId, selectedSubject, selectedBimester, schoolId, classes]);
 
   const handleReportChange = (studentId: string, value: string) => {
     setPerformanceData(prev => {
@@ -144,16 +168,6 @@ export default function Grades() {
         return newPerfData;
     });
   };
-
-  useEffect(() => {
-    if (selectedClassId) {
-        const cls = classes.find(c => c.id === selectedClassId);
-        setSelectedClass(cls);
-        handleFetchStudentsGrades();
-    } else {
-        setSelectedClass(null);
-    }
-  }, [selectedClassId, selectedSubject, selectedBimester, activeTab, classes]);
 
   const isEarlyChildhood = selectedClass?.level === 'creche' || selectedClass?.level === 'pre-escola';
 
@@ -295,7 +309,7 @@ export default function Grades() {
             >
               <option value="">Selecione uma turma para carregar os alunos...</option>
               {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name} - {c.period}</option>
+                <option key={c.id} value={c.id}>{c.name} - {c.shift || 'S/T'}</option>
               ))}
             </select>
           </div>

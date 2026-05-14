@@ -182,6 +182,12 @@ export default function Students() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (!formData.classId) {
+      alert("Por favor, selecione uma turma para o aluno. É obrigatório para o lançamento de notas e relatórios.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (editingStudent) {
@@ -544,29 +550,50 @@ export default function Students() {
 
                 {/* 6. Seleção de Turma */}
                 <section className="space-y-6 pt-6 border-t border-slate-100">
-                  <SectionTitle title="6. Seleção de Turma Atual" />
-                  <p className="text-xs text-slate-500 mb-4">Selecione uma turma para alocar o aluno imediatamente</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <SectionTitle title="6. Alocação em Turma *" />
+                      <p className="text-xs text-slate-500 mt-1">O aluno deve estar em uma turma para aparecer nos diários e relatórios.</p>
+                    </div>
+                    {formData.classId ? (
+                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase">Selecionado</span>
+                    ) : (
+                      <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase blink">Pendente</span>
+                    )}
+                  </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {classes.map(c => (
                       <div 
                         key={c.id} 
                         onClick={() => setFormData({...formData, classId: c.id})}
-                        className={`p-4 border rounded-xl cursor-pointer transition-all relative ${
+                        className={`p-4 border rounded-2xl cursor-pointer transition-all relative flex flex-col gap-1 ${
                           formData.classId === c.id 
-                            ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-500/20' 
-                            : 'border-slate-200 hover:border-slate-400'
+                            ? 'border-blue-600 bg-blue-50 ring-4 ring-blue-500/10 shadow-lg shadow-blue-500/5' 
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
-                         <h4 className="font-bold text-slate-800 text-sm">{c.name}</h4>
-                         <p className="text-[10px] text-slate-500 font-mono mt-1">{c.year} • {c.room}</p>
-                         {formData.classId === c.id && (
-                           <div className="absolute top-3 right-3 text-blue-600">
-                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping" />
-                           </div>
-                         )}
+                         <div className="flex justify-between items-start">
+                           <h4 className={`font-black text-sm uppercase ${formData.classId === c.id ? 'text-blue-700' : 'text-slate-800'}`}>{c.name}</h4>
+                           {formData.classId === c.id && (
+                             <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                               <div className="w-2 h-2 bg-white rounded-full" />
+                             </div>
+                           )}
+                         </div>
+                         <div className="flex items-center gap-2 mt-1">
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">{c.shift || 'Geral'}</span>
+                           <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">{c.level}</span>
+                         </div>
                       </div>
                     ))}
                   </div>
+                  {classes.length === 0 && (
+                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 opacity-60">
+                      <p className="text-sm font-medium text-slate-500 italic">Nenhuma turma cadastrada no sistema. Cadastre turmas primeiro.</p>
+                    </div>
+                  )}
                 </section>
                 
                 <div className="pt-4 flex gap-4 sticky bottom-0 bg-white py-4 border-t border-slate-50">
