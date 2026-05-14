@@ -634,7 +634,7 @@ export default function Reports() {
                   onClick={() => {
                     const columns = [
                       { header: 'Matrícula', key: 'ra' },
-                      { header: 'Nome do Aluno', key: 'name' },
+                      { header: 'Nome', key: 'name' },
                       { header: 'Turma', key: 'classId', render: (s: any) => classes.find(c => c.id === s.classId)?.name || 'Sem Turma' },
                       { header: 'Data Cadastro', key: 'createdAt', render: (s: any) => s.createdAt ? toDate(s.createdAt)?.toLocaleDateString('pt-BR') || '-' : '-' },
                       { header: 'Status', key: 'status' }
@@ -652,7 +652,7 @@ export default function Reports() {
               data={filteredStudents}
               columns={[
                 { header: 'Matrícula', key: 'ra' },
-                { header: 'Nome do Aluno', key: 'name', render: (s: any) => <span className="font-bold text-slate-800">{s.name}</span> },
+                { header: 'Nome', key: 'name', render: (s: any) => <span className="font-bold text-slate-800">{s.name}</span> },
                 { header: 'Turma', key: 'classId', render: (s: any) => (
                   <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold">
                     {classes.find(c => c.id === s.classId)?.name || 'Sem Turma'}
