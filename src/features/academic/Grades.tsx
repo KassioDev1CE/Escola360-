@@ -63,7 +63,7 @@ export default function Grades() {
     }
 
     const currentClass = classes.find(c => c.id === selectedClassId);
-    setSelectedClass(currentClass);
+    setSelectedClass(currentClass); // Force immediate update
     
     if (!currentClass) return;
 
@@ -73,11 +73,19 @@ export default function Grades() {
 
     const loadData = async () => {
       try {
-        // 1. Ouvir alunos da turma primeiro (Fonte da verdade para a lista)
+        // 1. Subscribe to students of the specific class directly if possible, or filter locally
         const unsubStudents = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
           if (!isMounted) return;
           
-          const classStudents = allStudents.filter(s => s.classId === selectedClassId);
+          // Debug log to help identify data issues
+          console.log(`Loaded ${allStudents.length} students total. Filtering for class ${selectedClassId}`);
+          
+          const classStudents = allStudents.filter(s => {
+            const studentClassId = s.classId || s.turmaId; // Handle potential field name variations
+            return studentClassId === selectedClassId;
+          });
+
+          console.log(`Found ${classStudents.length} students for this class`);
           
           // 2. Buscar dados de desempenho de forma assíncrona para não travar a lista de alunos
           const fetchPerformance = async () => {
@@ -421,7 +429,7 @@ export default function Grades() {
                             )}
                           </div>
                           
-                          <h4 className="font-bold text-slate-800 text-sm mb-1 truncate">{student.name}</h4>
+                          <h4 className="font-bold text-slate-800 text-sm mb-1 truncate">{student.name || "Sem nome cadastrado"}</h4>
                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-4">RA: {student.ra || '---'}</p>
                           
                           <button 
@@ -429,7 +437,7 @@ export default function Grades() {
                             className={`w-full py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
                               hasReport 
                                 ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20'
                             }`}
                           >
                             <BookOpen className="w-3 h-3" />
@@ -462,7 +470,7 @@ export default function Grades() {
                                  <ChevronRight className="w-5 h-5 rotate-180" />
                                </button>
                                <div>
-                                 <h3 className="font-black text-slate-800 text-lg">{student.name}</h3>
+                                 <h3 className="font-black text-slate-800 text-lg">{student.name || "Aluno sem nome"}</h3>
                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Preenchendo Relatório do {selectedBimester}º Bimestre</p>
                                </div>
                              </div>
