@@ -115,6 +115,19 @@ export default function App() {
     return <Portal onSelectRole={handleSelectRole} />;
   }
 
+  // If we have a user but no profile yet, and we're not technically "loading" from AuthContext,
+  // we should still treat it as a loading state if we're in the middle of authentication.
+  if (user && !profile && authStep === 'login') {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-500 font-bold">Carregando seu perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (authStep === 'login' && !user) {
     return <Login role={role as any} onBack={() => setAuthStep('portal')} onLoginSuccess={handleLoginSuccess} />;
   }

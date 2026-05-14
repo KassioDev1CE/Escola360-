@@ -21,7 +21,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
-  signUp: (email: string, pass: string) => Promise<void>;
+  signUp: (email: string, pass: string, name?: string, role?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true); // Ensure loading is true while we process the change
       setUser(firebaseUser);
       if (firebaseUser) {
         try {
@@ -73,12 +74,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
-  const signUp = async (email: string, pass: string) => {
+  const signUp = async (email: string, pass: string, name?: string, role?: string) => {
     const { createUserWithEmailAndPassword } = await import('firebase/auth');
-    await createUserWithEmailAndPassword(auth, email, pass);
+    const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, pass);
+    
+    // Create base profile if needed
+    if (firebaseUser) {
+      const newProfile: UserProfile = {
+        uid: firebaseUser.uid,
+        name: name || (email === ADMIN_EMAIL ? 'Administrador' : 'Usuário'),
+        email: email,
+        role: (role as any) || (email === ADMIN_EMAIL ? 'admin' : 'parent'),
+        schoolId: 'cm_school_123'
+      };
+      await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      setProfile(newProfile);
+    }
   };
 
-  const signOut = () => firebaseSignOut(auth);
+  const signOut = async () => {
+    setLoading(true);
+    await firebaseSignOut(auth);
+    setUser(null);
+    setProfile(null);
+    setLoading(false);
+  };
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut }}>

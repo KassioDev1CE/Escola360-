@@ -76,7 +76,7 @@ export default function Login({ role, onBack, onLoginSuccess }: LoginProps) {
 
     try {
       if (isRegistering) {
-        await signUp(form.identifier, form.password);
+        await signUp(form.identifier, form.password, undefined, role);
       } else {
         await signIn(form.identifier, form.password);
       }

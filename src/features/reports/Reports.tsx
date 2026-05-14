@@ -10,7 +10,8 @@ import {
   Filter,
   ArrowUpRight,
   UserCircle,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -30,6 +31,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../lib/AuthContext';
 import { firebaseService } from '../../lib/firebaseService';
+import { exportToPDF } from '../../lib/pdfUtils';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
 
@@ -445,10 +447,28 @@ export default function Reports() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => window.print()}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all border border-slate-200"
                 >
                   <Download className="w-4 h-4" />
-                  Exportar Relatório
+                  Imprimir Página
+                </button>
+                <button 
+                  onClick={() => {
+                    const stats = [
+                      { label: 'Total de Alunos', value: dashboardStats.totalStudents },
+                      { label: 'Turmas Ativas', value: dashboardStats.activeClasses },
+                      { label: 'Frequência Média', value: dashboardStats.avgAttendance },
+                      { label: 'Matrículas Novas (30d)', value: dashboardStats.newEnrollments }
+                    ];
+                    exportToPDF('Resumo Executivo da Escola', stats, [
+                      { header: 'Indicador', key: 'label' },
+                      { header: 'Valor', key: 'value', render: (v: any) => String(v.value) }
+                    ]);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                >
+                  <FileText className="w-4 h-4" />
+                  Gerar PDF Resumo
                 </button>
               </div>
             </div>
@@ -580,7 +600,25 @@ export default function Reports() {
                   </p>
                 )}
               </div>
-              <p className="text-xs font-bold text-slate-400">{filteredStudents.length} registros encontrados</p>
+              <div className="flex items-center gap-4">
+                <p className="text-xs font-bold text-slate-400">{filteredStudents.length} registros encontrados</p>
+                <button 
+                  onClick={() => {
+                    const columns = [
+                      { header: 'Matrícula', key: 'registration' },
+                      { header: 'Nome do Aluno', key: 'name' },
+                      { header: 'Turma', key: 'classId', render: (s: any) => classes.find(c => c.id === s.classId)?.name || 'Sem Turma' },
+                      { header: 'Data Cadastro', key: 'createdAt', render: (s: any) => s.createdAt ? toDate(s.createdAt)?.toLocaleDateString('pt-BR') || '-' : '-' },
+                      { header: 'Status', key: 'status' }
+                    ];
+                    exportToPDF(getTabLabel(activeTab), filteredStudents, columns);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-50 transition-all"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Gerar PDF
+                </button>
+              </div>
             </div>
             <ReportTable 
               data={filteredStudents}
@@ -614,7 +652,29 @@ export default function Reports() {
       case 'map-notas':
         return (
           <motion.div key="notas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <h2 className="text-2xl font-black text-slate-800">Mapa de Notas por Turma</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-800">Mapa de Notas por Turma</h2>
+              <button 
+                onClick={() => {
+                  const data = (Array.isArray(classes) ? classes : []).map(cls => {
+                    const safeGrades = Array.isArray(grades) ? grades : [];
+                    const classGrades = safeGrades.filter(g => g && g.classId === cls.id);
+                    const avg = classGrades.length ? 
+                      (classGrades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / classGrades.length).toFixed(1) : 
+                      '0.0';
+                    return { name: cls.name, avg };
+                  });
+                  exportToPDF('Mapa de Notas por Turma', data, [
+                    { header: 'Turma', key: 'name' },
+                    { header: 'Média Geral', key: 'avg' }
+                  ]);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-50 transition-all"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Gerar PDF
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(Array.isArray(classes) ? classes : []).map(cls => {
                 const safeGrades = Array.isArray(grades) ? grades : [];
@@ -653,7 +713,33 @@ export default function Reports() {
       case 'map-infrequencia':
         return (
           <motion.div key="frequencia" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <h2 className="text-2xl font-black text-slate-800">Mapa de Infrequência</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-800">Mapa de Infrequência</h2>
+              <button 
+                onClick={() => {
+                  const data = (Array.isArray(students) ? students : []).map(s => {
+                    const safeAttendance = Array.isArray(attendance) ? attendance : [];
+                    const studentAttendance = safeAttendance.filter(a => a && a.studentId === s.id);
+                    const absenses = studentAttendance.filter(a => a.status === 'absent' || a.status === 'F').length;
+                    return { 
+                      name: s.name, 
+                      className: classes.find(c => c.id === s.classId)?.name || '-',
+                      absenses: String(absenses)
+                    };
+                  }).sort((a,b) => parseInt(b.absenses) - parseInt(a.absenses));
+                  
+                  exportToPDF('Mapa de Infrequência', data, [
+                    { header: 'Aluno', key: 'name' },
+                    { header: 'Turma', key: 'className' },
+                    { header: 'Faltas Totais', key: 'absenses' }
+                  ]);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-50 transition-all"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Gerar PDF
+              </button>
+            </div>
             <ReportTable 
               data={(Array.isArray(students) ? students : []).map(s => {
                 const safeAttendance = Array.isArray(attendance) ? attendance : [];
@@ -710,7 +796,33 @@ export default function Reports() {
       case 'classificacao':
         return (
           <motion.div key="rank" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <h2 className="text-2xl font-black text-slate-800">Ranking por Desempenho</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-800">Ranking por Desempenho</h2>
+              <button 
+                onClick={() => {
+                  const data = (Array.isArray(students) ? students : []).map(s => {
+                    const safeGrades = Array.isArray(grades) ? grades : [];
+                    const sGrades = safeGrades.filter(g => g && g.studentId === s.id);
+                    const avg = sGrades.length ? sGrades.reduce((a, b) => a + (parseFloat(b.grade) || 0), 0) / sGrades.length : 0;
+                    return { 
+                      name: s.name, 
+                      avg: avg.toFixed(1),
+                      className: classes.find(c => c.id === s.classId)?.name || '-'
+                    };
+                  }).sort((a, b) => parseFloat(b.avg) - parseFloat(a.avg)).slice(0, 50);
+                  
+                  exportToPDF('Ranking de Desempenho Escolar', data, [
+                    { header: 'Aluno', key: 'name' },
+                    { header: 'Turma', key: 'className' },
+                    { header: 'Média Geral', key: 'avg' }
+                  ]);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-50 transition-all"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Gerar PDF
+              </button>
+            </div>
             <ReportTable 
               data={(Array.isArray(students) ? students : []).map(s => {
                 const safeGrades = Array.isArray(grades) ? grades : [];
