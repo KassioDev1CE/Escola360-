@@ -366,21 +366,36 @@ export const firebaseService = {
 
   getPedagogicalReportsByClass: async (schoolId: string, classId: string) => {
     try {
+      // 1. Primeiro buscamos os alunos que pertencem a esta turma
       const studentsQuery = query(collection(db, `schools/${schoolId}/students`), where('classId', '==', classId));
       const studentsSnapshot = await getDocs(studentsQuery);
       
-      const studentsReports = await Promise.all(studentsSnapshot.docs.map(async (studentDoc) => {
-        const reportDoc = await getDoc(doc(db, `schools/${schoolId}/students/${studentDoc.id}/pedagogical_reports`, classId));
-        return {
-          studentId: studentDoc.id,
-          studentName: studentDoc.data().name,
-          ...(reportDoc.exists() ? reportDoc.data() : {})
-        };
+      if (studentsSnapshot.empty) return [];
+
+      // 2. Para cada aluno, tentamos buscar o documento de relatório correspondente a esta turma
+      const reports = await Promise.all(studentsSnapshot.docs.map(async (studentDoc) => {
+        try {
+          const reportRef = doc(db, `schools/${schoolId}/students/${studentDoc.id}/pedagogical_reports`, classId);
+          const reportSnap = await getDoc(reportRef);
+          
+          return {
+            studentId: studentDoc.id,
+            studentName: studentDoc.data().name,
+            ...(reportSnap.exists() ? reportSnap.data() : {})
+          };
+        } catch (e) {
+          // Se falhar ao buscar o relatório individual, retornamos apenas os dados básicos do aluno
+          return {
+            studentId: studentDoc.id,
+            studentName: studentDoc.data().name,
+          };
+        }
       }));
       
-      return studentsReports;
+      return reports;
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/pedagogical_reports`);
+      console.error("Erro ao buscar relatórios pedagógicos:", error);
+      return [];
     }
   },
 

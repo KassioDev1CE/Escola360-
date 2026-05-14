@@ -61,59 +61,67 @@ export default function Grades() {
       return;
     }
 
-    const cls = classes.find(c => c.id === selectedClassId);
-    setSelectedClass(cls);
-    const isInfant = cls?.level === 'creche' || cls?.level === 'pre-escola';
+    const currentClass = classes.find(c => c.id === selectedClassId);
+    setSelectedClass(currentClass);
+    
+    if (!currentClass) return;
 
+    const isInfant = currentClass.level === 'creche' || currentClass.level === 'pre-escola';
     let isMounted = true;
     setLoading(true);
 
     const loadData = async () => {
       try {
-        let gradesData: any[] = [];
-        if (isInfant) {
-          gradesData = await firebaseService.getPedagogicalReportsByClass(schoolId, selectedClassId) || [];
-        } else {
-          gradesData = await firebaseService.getGradesByClass(schoolId, selectedClassId) || [];
-        }
-
-        if (!isMounted) return;
-        setPerformanceData(gradesData);
-
-        const unsub = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
+        // 1. Ouvir alunos da turma primeiro (Fonte da verdade para a lista)
+        const unsubStudents = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
           if (!isMounted) return;
           
           const classStudents = allStudents.filter(s => s.classId === selectedClassId);
           
-          const enrichedStudents = classStudents.map(student => {
-            const studentPerf = gradesData.find(pd => pd.studentId === student.id);
-            
+          // 2. Buscar dados de desempenho de forma assíncrona para não travar a lista de alunos
+          const fetchPerformance = async () => {
+            let perfData = [];
             if (isInfant) {
-               return {
+              perfData = await firebaseService.getPedagogicalReportsByClass(schoolId, selectedClassId) || [];
+            } else {
+              perfData = await firebaseService.getGradesByClass(schoolId, selectedClassId) || [];
+            }
+
+            if (!isMounted) return;
+            setPerformanceData(perfData);
+
+            const enriched = classStudents.map(student => {
+              const studentPerf = perfData.find(pd => pd.studentId === student.id);
+              
+              if (isInfant) {
+                return {
                   ...student,
                   report: studentPerf?.[`b${selectedBimester}_report`] || '',
                   absences: studentPerf?.[`b${selectedBimester}_absences`] || '0'
-               };
-            }
+                };
+              }
 
-            const specificPerf = studentPerf?.performance?.find((p: any) => 
+              const specificPerf = studentPerf?.performance?.find((p: any) => 
                 p.id === `${selectedClassId}_${selectedSubject}`
-            );
-            
-            return {
+              );
+              
+              return {
                 ...student,
                 grade: specificPerf?.[`b${selectedBimester}_grade`] || '',
                 absences: specificPerf?.[`b${selectedBimester}_absences`] || '0'
-            };
-          });
-          
-          setStudents(enrichedStudents);
-          setLoading(false);
+              };
+            });
+
+            setStudents(enriched);
+            setLoading(false);
+          };
+
+          fetchPerformance();
         });
 
-        return unsub;
+        return unsubStudents;
       } catch (error) {
-        console.error("Error loading student grades:", error);
+        console.error("Erro crítico ao carregar dados:", error);
         if (isMounted) setLoading(false);
       }
     };
@@ -123,7 +131,7 @@ export default function Grades() {
     return () => {
       isMounted = false;
       unsubPromise.then(unsub => {
-        if (unsub) unsub();
+        if (typeof unsub === 'function') unsub();
       });
     };
   }, [selectedClassId, selectedSubject, selectedBimester, schoolId, classes]);
