@@ -144,6 +144,26 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
+    "pedagogical_report": {
+      "title": "Pedagogical Report",
+      "description": "Qualitative evaluation of a student in early childhood education (Creche/Pre-escola)",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "b1_report": { "type": "string" },
+        "b1_absences": { "type": "string" },
+        "b2_report": { "type": "string" },
+        "b2_absences": { "type": "string" },
+        "b3_report": { "type": "string" },
+        "b3_absences": { "type": "string" },
+        "b4_report": { "type": "string" },
+        "b4_absences": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "classId", "schoolId"]
+    },
     "subject": {
       "title": "School Subject",
       "description": "A subject offered by the school",
@@ -167,6 +187,10 @@
     "/schools/{schoolId}/students/{studentId}/performance/{performanceId}": {
       "schema": "performance",
       "description": "Academic performance for a specific student"
+    },
+    "/schools/{schoolId}/students/{studentId}/pedagogical_reports/{reportId}": {
+      "schema": "pedagogical_report",
+      "description": "Pedagogical evaluations for a specific student"
     },
     "/schools/{schoolId}/subjects/{subjectId}": {
       "schema": "subject",

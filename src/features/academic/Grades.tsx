@@ -24,6 +24,7 @@ export default function Grades() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedBimester, setSelectedBimester] = useState('1');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,7 +59,15 @@ export default function Grades() {
     
     setLoading(true);
     try {
-      const gradesData = await firebaseService.getGradesByClass(schoolId, selectedClassId);
+      const cls = classes.find(c => c.id === selectedClassId);
+      const isInfant = cls?.level === 'creche' || cls?.level === 'pre-escola';
+      
+      let gradesData;
+      if (isInfant) {
+        gradesData = await firebaseService.getPedagogicalReportsByClass(schoolId, selectedClassId);
+      } else {
+        gradesData = await firebaseService.getGradesByClass(schoolId, selectedClassId);
+      }
       setPerformanceData(gradesData || []);
 
       const unsub = firebaseService.subscribeToStudents(schoolId, (allStudents) => {
@@ -66,6 +75,15 @@ export default function Grades() {
         
         const enrichedStudents = classStudents.map(student => {
             const studentPerf = gradesData?.find(pd => pd.studentId === student.id);
+            
+            if (isInfant) {
+               return {
+                  ...student,
+                  report: studentPerf?.[`b${selectedBimester}_report`] || '',
+                  absences: studentPerf?.[`b${selectedBimester}_absences`] || '0'
+               };
+            }
+
             const specificPerf = studentPerf?.performance?.find((p: any) => 
                 p.id === `${selectedClassId}_${selectedSubject}`
             );
@@ -86,11 +104,58 @@ export default function Grades() {
     }
   };
 
+  const handleReportChange = (studentId: string, value: string) => {
+    setPerformanceData(prev => {
+        const studentIdx = prev.findIndex(p => p.studentId === studentId);
+        let newPerfData = [...prev];
+        
+        if (studentIdx === -1) {
+            newPerfData.push({
+                studentId,
+                [`b${selectedBimester}_report`]: value,
+                [`b${selectedBimester}_absences`]: '0'
+            });
+        } else {
+            newPerfData[studentIdx] = { 
+                ...newPerfData[studentIdx], 
+                [`b${selectedBimester}_report`]: value 
+            };
+        }
+        return newPerfData;
+    });
+  };
+
+  const handleAbsencesChange = (studentId: string, value: string) => {
+    setPerformanceData(prev => {
+        const studentIdx = prev.findIndex(p => p.studentId === studentId);
+        let newPerfData = [...prev];
+        
+        if (studentIdx === -1) {
+            newPerfData.push({
+                studentId,
+                [`b${selectedBimester}_absences`]: value
+            });
+        } else {
+            newPerfData[studentIdx] = { 
+                ...newPerfData[studentIdx], 
+                [`b${selectedBimester}_absences`]: value 
+            };
+        }
+        return newPerfData;
+    });
+  };
+
   useEffect(() => {
     if (selectedClassId) {
+        const cls = classes.find(c => c.id === selectedClassId);
+        setSelectedClass(cls);
         handleFetchStudentsGrades();
+    } else {
+        setSelectedClass(null);
     }
-  }, [selectedClassId, selectedSubject, selectedBimester, activeTab]);
+  }, [selectedClassId, selectedSubject, selectedBimester, activeTab, classes]);
+
+  const isEarlyChildhood = selectedClass?.level === 'creche' || selectedClass?.level === 'pre-escola';
 
   const handleGradeChange = (studentId: string, subjectName: string, field: 'grade' | 'absences', value: string) => {
     setPerformanceData(prev => {
@@ -138,24 +203,22 @@ export default function Grades() {
     
     setSaving(true);
     try {
-      const batch = [];
-      for (const studentPerf of performanceData) {
-          for (const perf of studentPerf.performance) {
-              batch.push({
-                  studentId: studentPerf.studentId,
-                  ...perf
-              });
-          }
+      if (isEarlyChildhood) {
+        await firebaseService.savePedagogicalReports(schoolId, selectedClassId, performanceData);
+      } else {
+        const batch = [];
+        for (const studentPerf of performanceData) {
+            if (studentPerf.performance) {
+              for (const perf of studentPerf.performance) {
+                  batch.push({
+                      studentId: studentPerf.studentId,
+                      ...perf
+                  });
+              }
+            }
+        }
+        await firebaseService.saveGrades(schoolId, selectedClassId, "BATCH_UPDATE", batch);
       }
-      
-      // Use the generic save for each subject/student combination
-      // We can reuse saveGrades but need to structure it slightly differently
-      // Actually, let's create a more efficient batch save in service if needed,
-      // but for now, we'll group by subject or just send the full array.
-      
-      // Let's refine the batch save logic in firebaseService if it's too much, 
-      // but for a class of 30 students and 10 subjects (300 writes), batch is fine.
-      await firebaseService.saveGrades(schoolId, selectedClassId, "BATCH_UPDATE", batch);
       
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -171,27 +234,31 @@ export default function Grades() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <GraduationCap className="w-8 h-8 text-blue-600" />
-            Notas e Frequência
-          </h2>
-          <p className="text-slate-500 text-sm">Gerencie o desempenho acadêmico dos alunos por bimestre.</p>
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <GraduationCap className="w-8 h-8 text-blue-600" />
+              {isEarlyChildhood ? 'Relatórios Pedagógicos' : 'Notas e Frequência'}
+            </h2>
+            <p className="text-slate-500 text-sm">
+              {isEarlyChildhood 
+                ? 'Avaliação qualitativa e frequência na educação infantil.' 
+                : 'Gerencie o desempenho acadêmico dos alunos por bimestre.'}
+            </p>
         </div>
         
         <div className="flex items-center gap-3">
           <div className="flex p-1 bg-slate-100 rounded-xl mr-4">
-             <button 
-               onClick={() => setActiveTab('entry')}
-               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'entry' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Lançar Notas
-             </button>
-             <button 
-               onClick={() => setActiveTab('map')}
-               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'map' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Mapa de Notas
-             </button>
+              <button 
+                onClick={() => setActiveTab('entry')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'entry' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {isEarlyChildhood ? 'Lançar Relatórios' : 'Lançar Notas'}
+              </button>
+              <button 
+                onClick={() => setActiveTab('map')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'map' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {isEarlyChildhood ? 'Visualizar Relatórios' : 'Mapa de Notas'}
+              </button>
           </div>
           <button 
             disabled={students.length === 0 || saving || activeTab === 'map'}
@@ -294,6 +361,65 @@ export default function Grades() {
                <p className="font-bold text-slate-600">Sem alunos nesta turma</p>
                <p className="text-sm text-slate-400">É necessário matricular alunos antes de lançar notas.</p>
              </div>
+          </div>
+        ) : isEarlyChildhood ? (
+          <div className="p-6 space-y-8">
+            {activeTab === 'entry' ? (
+              <div className="grid grid-cols-1 gap-8">
+                {students.map((student, idx) => {
+                  const data = performanceData.find(p => p.studentId === student.id) || {};
+                  return (
+                    <motion.div 
+                      key={student.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4"
+                    >
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-slate-800">{student.name}</h4>
+                        <div className="flex items-center gap-4">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Faltas no Bimestre</label>
+                          <input 
+                            type="number"
+                            min="0"
+                            value={data[`b${selectedBimester}_absences`] || '0'}
+                            onChange={(e) => handleAbsencesChange(student.id, e.target.value)}
+                            className="w-16 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <textarea 
+                        value={data[`b${selectedBimester}_report`] || ''}
+                        onChange={(e) => handleReportChange(student.id, e.target.value)}
+                        placeholder="Descreva o desenvolvimento pedagógico e socioemocional do aluno neste bimestre..."
+                        className="w-full h-32 p-4 bg-white border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none"
+                      />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {students.map(student => {
+                   const data = performanceData.find(p => p.studentId === student.id) || {};
+                   const report = data[`b${selectedBimester}_report`];
+                   return (
+                     <div key={student.id} className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                           <h4 className="font-bold text-slate-800">{student.name}</h4>
+                           <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase">
+                             {data[`b${selectedBimester}_absences`] || 0} Faltas
+                           </span>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed italic border-l-4 border-blue-500 pl-4 bg-slate-50 py-3 rounded-r-xl">
+                          {report || 'Nenhum relatório lançado para este bimestre.'}
+                        </p>
+                     </div>
+                   );
+                 })}
+              </div>
+            )}
           </div>
         ) : activeTab === 'entry' ? (
           <div className="overflow-x-auto">

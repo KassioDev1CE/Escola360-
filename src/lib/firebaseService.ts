@@ -344,6 +344,46 @@ export const firebaseService = {
     }
   },
 
+  // Pedagogical Reports (Creche/Pre-escola)
+  savePedagogicalReports: async (schoolId: string, classId: string, reportsData: any[]) => {
+    try {
+      const batch = writeBatch(db);
+      reportsData.forEach(report => {
+        const docRef = doc(db, `schools/${schoolId}/students/${report.studentId}/pedagogical_reports`, classId);
+        const { studentId, ...dataToSave } = report;
+        batch.set(docRef, {
+          ...dataToSave,
+          classId,
+          schoolId,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `schools/${schoolId}/students/pedagogical_reports`);
+    }
+  },
+
+  getPedagogicalReportsByClass: async (schoolId: string, classId: string) => {
+    try {
+      const studentsQuery = query(collection(db, `schools/${schoolId}/students`), where('classId', '==', classId));
+      const studentsSnapshot = await getDocs(studentsQuery);
+      
+      const studentsReports = await Promise.all(studentsSnapshot.docs.map(async (studentDoc) => {
+        const reportDoc = await getDoc(doc(db, `schools/${schoolId}/students/${studentDoc.id}/pedagogical_reports`, classId));
+        return {
+          studentId: studentDoc.id,
+          studentName: studentDoc.data().name,
+          ...(reportDoc.exists() ? reportDoc.data() : {})
+        };
+      }));
+      
+      return studentsReports;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `schools/${schoolId}/students/pedagogical_reports`);
+    }
+  },
+
   // Finance
   subscribeToFinance: (schoolId: string, callback: (transactions: any[]) => void) => {
     const q = query(collection(db, `schools/${schoolId}/finance`));

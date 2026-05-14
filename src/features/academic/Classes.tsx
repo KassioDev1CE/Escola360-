@@ -9,6 +9,7 @@ import { doc, getDoc } from 'firebase/firestore';
 interface ClassData {
   id: string;
   name: string;
+  level: 'creche' | 'pre-escola' | 'fundamental' | 'medio';
   year: number;
   room: string;
   shift: string;
@@ -38,6 +39,7 @@ export default function Classes() {
   
   const [formData, setFormData] = useState({ 
     name: '', 
+    level: 'fundamental' as ClassData['level'],
     year: new Date().getFullYear(), 
     room: '', 
     shift: '', 
@@ -109,6 +111,7 @@ export default function Classes() {
     setEditingClass(c);
     setFormData({
       name: c.name,
+      level: c.level || 'fundamental',
       year: c.year,
       room: c.room,
       shift: c.shift || '',
@@ -152,7 +155,7 @@ export default function Classes() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', year: new Date().getFullYear(), room: '', shift: '', startTime: '', endTime: '', days: [] });
+    setFormData({ name: '', level: 'fundamental', year: new Date().getFullYear(), room: '', shift: '', startTime: '', endTime: '', days: [] });
   };
 
   const toggleDay = (day: string) => {
@@ -386,6 +389,20 @@ export default function Classes() {
                     className="w-full mt-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                     placeholder="Ex: 9º Ano A"
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nível de Ensino *</label>
+                  <select 
+                    required
+                    value={formData.level}
+                    onChange={(e) => setFormData({...formData, level: e.target.value as any})}
+                    className="w-full mt-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                  >
+                    <option value="creche">Educação Infantil - Creche</option>
+                    <option value="pre-escola">Educação Infantil - Pré-Escola</option>
+                    <option value="fundamental">Ensino Fundamental</option>
+                    <option value="medio">Ensino Médio</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ano Letivo *</label>

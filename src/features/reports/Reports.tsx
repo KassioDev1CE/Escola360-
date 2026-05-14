@@ -154,6 +154,7 @@ function getTabLabel(id: string): string {
     'map-enturmacao': 'Mapa de Enturmação',
     'map-deficiencia': 'Mapa Deficiência',
     'map-doencas': 'Mapa de Doenças/Síndromes',
+    'map-relatorios': 'Mapa de Relatórios Pedagógicos',
     'map-notas': 'Mapa de Notas',
     'map-infrequencia': 'Mapa de Infrequência',
     'map-transporte': 'Mapa de Transporte Escolar',
@@ -171,6 +172,7 @@ export default function Reports() {
   const [classes, setClasses] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
+  const [pedagogicalReports, setPedagogicalReports] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -203,6 +205,22 @@ export default function Reports() {
       setAttendance(data);
     });
 
+    // We don't have a subscribeToPedagogicalReports so we'll fetch them manually or just group students' ones
+    // For simplicity, let's fetch pedagogical reports for early childhood classes
+    const fetchPedagogicalReports = async () => {
+      try {
+        const infantClasses = classes.filter(c => c.level === 'creche' || c.level === 'pre-escola');
+        const allReports = await Promise.all(infantClasses.map(c => firebaseService.getPedagogicalReportsByClass(schoolId, c.id)));
+        setPedagogicalReports(allReports.flat());
+      } catch (err) {
+        console.error("Error fetching pedagogical reports in background", err);
+      }
+    };
+    
+    if (classes.length > 0) {
+      fetchPedagogicalReports();
+    }
+
     return () => {
       unsubStudents();
       unsubClasses();
@@ -210,7 +228,7 @@ export default function Reports() {
       unsubGrades();
       unsubAttendance();
     };
-  }, [schoolId]);
+  }, [schoolId, classes.length]);
 
   // Calculations for charts
   const ageData = useMemo(() => {
@@ -308,6 +326,10 @@ export default function Reports() {
         case 'map-transporte': return safeStudents.filter(s => s.publicTransport === true);
         case 'map-enturmacao': return safeStudents.filter(s => s.classId);
         case 'map-raca': return safeStudents.filter(s => s.race && s.race !== '');
+        case 'map-relatorios': return safeStudents.filter(s => {
+          const clsValue = classes.find(c => c.id === s.classId);
+          return clsValue?.level === 'creche' || clsValue?.level === 'pre-escola';
+        });
         case 'census-initial': 
           return safeStudents.filter(s => {
             const created = toDate(s.createdAt);
@@ -333,10 +355,16 @@ export default function Reports() {
     try {
       const bimestres = ['1º Bim', '2º Bim', '3º Bim', '4º Bim'];
       const safeGrades = Array.isArray(grades) ? grades : [];
+      const safeClasses = Array.isArray(classes) ? classes : [];
       
       return bimestres.map(bim => {
         const bimKey = bim.charAt(0); // '1', '2', '3', '4'
-        const bimGrades = safeGrades.filter(g => g && g[`b${bimKey}_grade`]);
+        const bimGrades = safeGrades.filter(g => {
+          if (!g) return false;
+          const clsObj = safeClasses.find(c => c.id === g.classId);
+          // Only include classes that have grades
+          return clsObj && clsObj.level !== 'creche' && clsObj.level !== 'pre-escola' && g[`b${bimKey}_grade`];
+        });
         const total = bimGrades.length;
         const approved = bimGrades.filter(g => {
           const val = parseFloat(g[`b${bimKey}_grade`]);
@@ -649,6 +677,69 @@ export default function Reports() {
           </motion.div>
         );
 
+      case 'map-relatorios':
+        return (
+          <motion.div key="pedagogical" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Mapa de Relatórios Pedagógicos</h2>
+                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Educação Infantil</p>
+              </div>
+              <div className="flex items-center gap-4">
+                 <button 
+                  onClick={() => {
+                    const data = filteredStudents.map(s => {
+                      const report = pedagogicalReports.find(r => r.studentId === s.id) || {};
+                      return {
+                        ra: s.ra,
+                        name: s.name,
+                        class: classes.find(c => c.id === s.classId)?.name || '-',
+                        report: report.b1_report || 'Não informado'
+                      };
+                    });
+                    exportToPDF('Mapa de Relatórios - 1º Bimestre', data, [
+                      { header: 'Matrícula', key: 'ra' },
+                      { header: 'Nome', key: 'name' },
+                      { header: 'Turma', key: 'class' },
+                      { header: 'Relatório (1º Bim)', key: 'report' }
+                    ]);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-50 transition-all font-black"
+                 >
+                   <Download className="w-3.5 h-3.5" />
+                   PDF 1º Bimestre
+                 </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               {filteredStudents.map(student => {
+                 const report = pedagogicalReports.find(r => r.studentId === student.id) || {};
+                 return (
+                   <div key={student.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                         <div>
+                            <h4 className="font-black text-slate-800 uppercase text-xs">{student.name}</h4>
+                            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{classes.find(c => c.id === student.classId)?.name}</p>
+                         </div>
+                         <div className="flex flex-col items-end gap-1">
+                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase">
+                              {report.b1_absences || 0} Faltas (1ºB)
+                            </span>
+                         </div>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                         <p className="text-[11px] text-slate-600 line-clamp-3 italic">
+                           {report.b1_report || 'Sem relatório lançado para o 1º bimestre.'}
+                         </p>
+                      </div>
+                   </div>
+                 );
+               })}
+            </div>
+          </motion.div>
+        );
+
       case 'map-notas':
         return (
           <motion.div key="notas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -656,7 +747,7 @@ export default function Reports() {
               <h2 className="text-2xl font-black text-slate-800">Mapa de Notas por Turma</h2>
               <button 
                 onClick={() => {
-                  const data = (Array.isArray(classes) ? classes : []).map(cls => {
+                  const data = (Array.isArray(classes) ? classes : []).filter(c => c.level !== 'creche' && c.level !== 'pre-escola').map(cls => {
                     const safeGrades = Array.isArray(grades) ? grades : [];
                     const classGrades = safeGrades.filter(g => g && g.classId === cls.id);
                     const avg = classGrades.length ? 
@@ -676,7 +767,7 @@ export default function Reports() {
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(Array.isArray(classes) ? classes : []).map(cls => {
+              {(Array.isArray(classes) ? classes : []).filter(c => c.level !== 'creche' && c.level !== 'pre-escola').map(cls => {
                 const safeGrades = Array.isArray(grades) ? grades : [];
                 const classGrades = safeGrades.filter(g => g && g.classId === cls.id);
                 const avg = classGrades.length ? 
@@ -706,6 +797,11 @@ export default function Reports() {
                   </div>
                 );
               })}
+              {(Array.isArray(classes) ? classes : []).filter(c => c.level === 'creche' || c.level === 'pre-escola').length > 0 && (
+                <div className="col-span-full border-t border-slate-100 pt-6 mt-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase italic">Turmas de educação infantil utilizam relatórios pedagógicos qualitativos e não aparecem neste mapa de notas numéricas.</p>
+                </div>
+              )}
             </div>
           </motion.div>
         );
@@ -994,6 +1090,7 @@ export default function Reports() {
                   >
                     <SubNavItem id="map-enturmacao" label="Mapa de Enturmação" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-raca" label="Mapa de Cor/Raça" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <SubNavItem id="map-relatorios" label="Mapa de Relatórios INFANTIL" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-deficiencia" label="Mapa Deficiência" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-doencas" label="Mapa de Doenças/Sídromes" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <SubNavItem id="map-notas" label="Mapa de Notas" activeTab={activeTab} setActiveTab={setActiveTab} />
