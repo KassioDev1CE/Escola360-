@@ -3,27 +3,43 @@ import autoTable from 'jspdf-autotable';
 
 export const exportToPDF = (title: string, data: any[], columns: { header: string, key: string, render?: (item: any) => string }[]) => {
   try {
-    console.log(`Starting PDF Export: ${title}`, { rowCount: data?.length });
-    
-    if (!data || data.length === 0) {
-      console.warn('No data to export to PDF');
-      return;
-    }
-
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
     
-    // Add Title
-    doc.setFontSize(18);
-    doc.setTextColor(40);
-    doc.text(title, 14, 22);
+    // Header background
+    doc.setFillColor(63, 81, 181); // Indigo 600
+    doc.rect(0, 0, pageWidth, 40, 'F');
     
-    // Add Date
+    // App Title / Brand
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EducaConnect', 14, 18);
+    
     doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Sistema de Gestão Escolar Inteligente', 14, 25);
+
+    // Report Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title.toUpperCase(), 14, 34);
+
+    // Info Section below header
     doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const dateStr = new Date().toLocaleString('pt-BR');
+    doc.text(`Relatório Extraído em: ${dateStr}`, 14, 48);
+    doc.text(`Total de registros: ${data?.length || 0}`, pageWidth - 14, 48, { align: 'right' });
+
+    // Decorative line
+    doc.setDrawColor(230);
+    doc.line(14, 52, pageWidth - 14, 52);
 
     // Prepare table data
-    const tableRows = data.map(item => {
+    const tableRows = (data || []).map(item => {
       return columns.map(col => {
         try {
           if (col.render) {
@@ -35,7 +51,6 @@ export const exportToPDF = (title: string, data: any[], columns: { header: strin
           const val = item[col.key];
           return val !== undefined && val !== null ? String(val) : '-';
         } catch (e) {
-          console.error('Error rendering column', col.key, e);
           return '-';
         }
       });
@@ -43,32 +58,47 @@ export const exportToPDF = (title: string, data: any[], columns: { header: strin
 
     const tableColumnNames = columns.map(col => col.header);
 
-    // Add Table using the functional approach which is safer in Vite
+    // Add Table
     autoTable(doc, {
-      startY: 35,
+      startY: 58,
       head: [tableColumnNames],
       body: tableRows,
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 3 },
-      alternateRowStyles: { fillColor: [249, 250, 251] },
-      margin: { top: 35 },
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [63, 81, 181], 
+        textColor: [255, 255, 255], 
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 4,
+        valign: 'middle',
+        overflow: 'linebreak'
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold' }
+      },
+      alternateRowStyles: { 
+        fillColor: [245, 247, 250] 
+      },
+      margin: { left: 14, right: 14 },
       didDrawPage: (data) => {
         // Footer
-        const str = 'Página ' + doc.getNumberOfPages();
         doc.setFontSize(8);
-        const pageSize = doc.internal.pageSize;
-        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-        doc.text(str, data.settings.margin.left, pageHeight - 10);
+        doc.setTextColor(150);
+        const str = 'Página ' + doc.getNumberOfPages();
+        const pageHeight = doc.internal.pageSize.height;
+        doc.text(str, 14, pageHeight - 10);
+        doc.text('EducaConnect - Gestão de Alta Performance', pageWidth / 2, pageHeight - 10, { align: 'center' });
       }
     });
 
-    // Save the PDF
     const fileName = `${title.toLowerCase().replace(/[^\w]/g, '_')}_${new Date().getTime()}.pdf`;
     doc.save(fileName);
-    console.log(`PDF Saved: ${fileName}`);
   } catch (error) {
     console.error('Failed to generate PDF:', error);
-    alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+    alert('Erro ao gerar o relatório detalhado.');
   }
 };
