@@ -14,7 +14,7 @@ export const exportToPDF = (title: string, data: any[], columns: { header: strin
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('EducaConnect', 14, 18);
+    doc.text('Escola360', 14, 18);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -35,11 +35,12 @@ export const exportToPDF = (title: string, data: any[], columns: { header: strin
     doc.text(`Total de registros: ${data?.length || 0}`, pageWidth - 14, 48, { align: 'right' });
 
     // Decorative line
-    doc.setDrawColor(230);
+    doc.setDrawColor(220, 231, 241);
+    doc.setLineWidth(0.5);
     doc.line(14, 52, pageWidth - 14, 52);
 
     // Prepare table data
-    const tableRows = (data || []).map(item => {
+    const tableRows = (data || []).map((item, index) => {
       return columns.map(col => {
         try {
           if (col.render) {
@@ -63,35 +64,44 @@ export const exportToPDF = (title: string, data: any[], columns: { header: strin
       startY: 58,
       head: [tableColumnNames],
       body: tableRows,
-      theme: 'striped',
+      theme: 'grid',
       headStyles: { 
-        fillColor: [63, 81, 181], 
+        fillColor: [47, 54, 133], // Darker Indigo
         textColor: [255, 255, 255], 
-        fontSize: 10,
+        fontSize: 9,
         fontStyle: 'bold',
-        halign: 'left'
+        halign: 'left',
+        cellPadding: 5
       },
       styles: { 
-        fontSize: 9, 
+        fontSize: 8, 
         cellPadding: 4,
         valign: 'middle',
-        overflow: 'linebreak'
+        overflow: 'linebreak',
+        lineColor: [230, 235, 245],
+        lineWidth: 0.1,
       },
       columnStyles: {
-        0: { fontStyle: 'bold' }
+        0: { fontStyle: 'bold', cellWidth: 'auto' }
       },
       alternateRowStyles: { 
-        fillColor: [245, 247, 250] 
+        fillColor: [250, 252, 255] 
       },
-      margin: { left: 14, right: 14 },
+      margin: { left: 14, right: 14, bottom: 20 },
       didDrawPage: (data) => {
         // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(150);
+        doc.setFontSize(7);
+        doc.setTextColor(160);
         const str = 'Página ' + doc.getNumberOfPages();
         const pageHeight = doc.internal.pageSize.height;
-        doc.text(str, 14, pageHeight - 10);
-        doc.text('EducaConnect - Gestão de Alta Performance', pageWidth / 2, pageHeight - 10, { align: 'center' });
+        
+        // Line above footer
+        doc.setDrawColor(240);
+        doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+        
+        doc.text(str, 14, pageHeight - 8);
+        doc.text('© 2026 Escola360 - Inteligência em Gestão Educacional', pageWidth / 2, pageHeight - 8, { align: 'center' });
+        doc.text('Documento oficial gerado pelo sistema', pageWidth - 14, pageHeight - 8, { align: 'right' });
       }
     });
 
